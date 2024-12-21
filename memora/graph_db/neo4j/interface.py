@@ -1,16 +1,15 @@
 import os
 import neo4j
 from neo4j import AsyncGraphDatabase
-from datetime import date
-from typing import Dict, List, Tuple
 from typing_extensions import override
 
 from .organization import Neo4jOrganization
 from .agent import Neo4jAgent
 from .user import Neo4jUser
 from .interaction import Neo4jInteraction
+from .memory import Neo4jMemory
 
-class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInteraction):
+class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInteraction, Neo4jMemory):
 
     def __init__(self,
                  uri: str = os.getenv("NEO4J_URI"),
@@ -70,19 +69,3 @@ class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInterac
         async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
             await session.execute_write(create_constraints_and_indexes)
 
-    # Memory methods
-    @override
-    async def get_user_memory(self, org_id: str, user_id: str, memory_id: str) -> Dict[str, str]:
-        return await get_user_memory(self.driver, org_id, user_id, memory_id)
-
-    @override
-    async def get_all_user_memories(self, org_id: str, user_id: str) -> List[Dict[str, str]]:
-        return await get_all_user_memories(self.driver, org_id, user_id)
-
-    @override
-    async def delete_user_memory(self, org_id: str, user_id: str, memory_id: str) -> None:
-        await delete_user_memory(self.driver, org_id, user_id, memory_id)
-
-    @override
-    async def delete_all_user_memories(self, org_id: str, user_id: str) -> None:
-        await delete_all_user_memories(self.driver, org_id, user_id)

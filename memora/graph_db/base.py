@@ -372,8 +372,8 @@ class BaseGraphDB(ABC):
         Args:
             org_id: UUID string identifying the organization
             user_id: UUID string identifying the user
-            agent_id: Optional UUID string identifying the agent. If provided, 
-                only memories obtained from interactions with this agent are returned. 
+            agent_id: Optional UUID string identifying the agent. If provided, only memories obtained from 
+                interactions with this agent are returned. 
                 Otherwise, all memories associated with the user are returned.
             
         Returns:

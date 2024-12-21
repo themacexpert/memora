@@ -323,7 +323,9 @@ class Neo4jInteraction(BaseGraphDB):
                 })<-[:INTERACTION_SOURCE]-(m:Memory)
                 RETURN m{.memory_id, .memory, obtained_at: toString(m.obtained_at)} as memory
             """, org_id=org_id, user_id=user_id, interaction_id=interaction_id)
-            return await result.value("memory")
+            
+            records = await result.value("memory", [])
+            return records
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
             return await session.execute_read(get_memories_tx)
