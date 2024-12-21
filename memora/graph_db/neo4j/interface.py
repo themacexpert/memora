@@ -8,8 +8,9 @@ from typing_extensions import override
 from .organization import Neo4jOrganization
 from .agent import Neo4jAgent
 from .user import Neo4jUser
+from .interaction import Neo4jInteraction
 
-class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser):
+class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInteraction):
 
     def __init__(self,
                  uri: str = os.getenv("NEO4J_URI"),
@@ -68,55 +69,6 @@ class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser):
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
             await session.execute_write(create_constraints_and_indexes)
-
-    # Interaction methods
-    @override
-    async def add_interaction_with_memories(
-        self,
-        org_id: str,
-        agent_id: str, 
-        user_id: str,
-        interaction_date: date = date.today(),
-        memories: List[str] = []
-    ) -> str:
-        return await add_interaction_with_memories(
-            self.driver,
-            org_id,
-            agent_id,
-            user_id,
-            interaction_date,
-            memories
-        )
-
-    @override
-    async def update_interaction_with_memories(
-        self,
-        org_id: str,
-        interaction_id: str,
-        user_id: str,
-        updated_date: date = date.today(),
-        new_memories: List[str] = []
-    ) -> Tuple[str, str]:
-        return await update_interaction_with_memories(
-            self.driver,
-            org_id,
-            interaction_id,
-            user_id,
-            updated_date,
-            new_memories
-        )
-
-    @override
-    async def delete_user_interaction(self, org_id: str, user_id: str, interaction_id: str) -> None:
-        await delete_user_interaction(self.driver, org_id, user_id, interaction_id)
-
-    @override
-    async def delete_all_user_interactions(self, org_id: str, user_id: str) -> None:
-        await delete_all_user_interactions(self.driver, org_id, user_id)
-
-    @override
-    async def get_all_interaction_memories(self, org_id: str, user_id: str, interaction_id: str) -> List[Dict[str, str]]:
-        return await get_all_interaction_memories(self.driver, org_id, user_id, interaction_id)
 
     # Memory methods
     @override

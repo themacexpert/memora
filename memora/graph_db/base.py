@@ -207,9 +207,9 @@ class BaseGraphDB(ABC):
             org_id: UUID string identifying the organization
             agent_id: UUID string identifying the agent
             user_id: UUID string identifying the user
-            memories_and_interaction: Contains both the interaction and the associated memories to store in memory stores
-            vector_db_add_memories_fn: Coroutine to add memories to vector DB, called in the graph transaction block
-                                       to ensure data consistency across graph and vector DBs (They succeed or fail together).
+            memories_and_interaction: Contains both the interaction and the associated memories.
+            vector_db_add_memories_fn: Coroutine (`BaseVectorDB.add_memories`),
+                called in the graph transaction block to ensure data consistency.
         
         Returns:
             - interaction_id: UUID string identifying the created interaction
@@ -220,8 +220,9 @@ class BaseGraphDB(ABC):
     async def update_interaction_and_memories(
         self,
         org_id: str,
-        interaction_id: str,
+        agent_id: str,
         user_id: str,
+        interaction_id: str,
         updated_memories_and_interaction: MemoriesAndInteraction,
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
     ) -> Tuple[str, str]:
@@ -240,11 +241,12 @@ class BaseGraphDB(ABC):
         
         Args:
             org_id: UUID string identifying the organization
-            interaction_id: UUID string identifying the interaction to update
+            agent_id: UUID string identifying the agent in the updated interaction
             user_id: UUID string identifying the user
-            updated_memories_and_interaction: Contains both the updated interaction and the associated new memories to update in memory stores
-            vector_db_add_memories_fn: Coroutine to add memories to vector DB, called in the graph transaction block
-                                       to ensure data consistency across graph and vector DBs (They succeed or fail together).
+            interaction_id: UUID string identifying the interaction to update
+            updated_memories_and_interaction: Contains both the updated interaction and the associated new memories.
+            vector_db_add_memories_fn: Coroutine (`BaseVectorDB.add_memories`),
+                called in the graph transaction block to ensure data consistency.
 
             
         Returns:
@@ -277,36 +279,6 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def delete_user_interaction(
-        self,
-        org_id: str,
-        user_id: str,
-        interaction_id: str
-    ) -> None:
-        """Deletes an interaction record and its associated memories.
-        
-        Args:
-            org_id: UUID string identifying the organization
-            user_id: UUID string identifying the user
-            interaction_id: UUID string identifying the interaction to delete
-        """
-        pass
-
-    @abstractmethod
-    async def delete_all_user_interactions(
-        self,
-        org_id: str,
-        user_id: str
-    ) -> None:
-        """Deletes all interactions and their associated memories for a specific user in an organization.
-        
-        Args:
-            org_id: UUID string identifying the organization
-            user_id: UUID string identifying the user whose interactions should be deleted
-        """
-        pass
-
-    @abstractmethod
     async def get_all_interaction_memories(
         self,
         org_id: str,
@@ -327,6 +299,43 @@ class BaseGraphDB(ABC):
             - obtained_at: ISO format timestamp of when the memory was obtained
         """
         pass
+
+    @abstractmethod
+    async def delete_user_interaction_and_its_memories(
+        self,
+        org_id: str,
+        user_id: str,
+        interaction_id: str,
+        vector_db_delete_memories_by_id_fn: Callable[..., Awaitable[None]]
+    ) -> None:
+        """Deletes an interaction record and its associated memories.
+        
+        Args:
+            org_id: UUID string identifying the organization
+            user_id: UUID string identifying the user
+            interaction_id: UUID string identifying the interaction to delete
+            vector_db_delete_memories_by_id_fn: Coroutine (`BaseVectorDB.delete_memories`),
+                called in the graph transaction block to ensure data consistency.
+        """
+        pass
+
+    @abstractmethod
+    async def delete_all_user_interactions_and_their_memories(
+        self,
+        org_id: str,
+        user_id: str,
+        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]]
+    ) -> None:
+        """Deletes all interactions and their associated memories for a specific user in an organization.
+        
+        Args:
+            org_id: UUID string identifying the organization
+            user_id: UUID string identifying the user whose interactions should be deleted
+            vector_db_delete_all_user_memories_fn: Coroutine (`BaseVectorDB.delete_all_user_memories`), 
+                called in the graph transaction block to ensure data consistency.
+        """
+        pass
+
 
     # Memory methods
     @abstractmethod
@@ -355,13 +364,17 @@ class BaseGraphDB(ABC):
     async def get_all_user_memories(
         self,
         org_id: str,
-        user_id: str
+        user_id: str,
+        agent_id: Optional[str] = None
     ) -> List[Dict[str, str]]:
         """Retrieves all memories associated with a specific user.
         
         Args:
             org_id: UUID string identifying the organization
             user_id: UUID string identifying the user
+            agent_id: Optional UUID string identifying the agent. If provided, 
+                only memories obtained from interactions with this agent are returned. 
+                Otherwise, all memories associated with the user are returned.
             
         Returns:
             List of dictionaries containing memory details:
@@ -376,7 +389,8 @@ class BaseGraphDB(ABC):
         self,
         org_id: str,
         user_id: str,
-        memory_id: str
+        memory_id: str,
+        vector_db_delete_memory_by_id_fn: Callable[..., Awaitable[None]]
     ) -> None:
         """Deletes a specific memory.
         
@@ -384,6 +398,8 @@ class BaseGraphDB(ABC):
             org_id: UUID string identifying the organization
             user_id: UUID string identifying the user
             memory_id: UUID string identifying the memory to delete
+            vector_db_delete_memory_by_id_fn: Coroutine (`BaseVectorDB.delete_memory`),
+                called in the graph transaction block to ensure data consistency.
         """
         pass
 
@@ -391,12 +407,16 @@ class BaseGraphDB(ABC):
     async def delete_all_user_memories(
         self,
         org_id: str,
-        user_id: str
+        user_id: str,
+        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]]
     ) -> None:
-        """Deletes all memories and their associated interactions for a specific user.
-        
+        """
+        Deletes all memories of a specific user.
+
         Args:
             org_id: UUID string identifying the organization
             user_id: UUID string identifying the user
+            vector_db_delete_all_user_memories_fn: Coroutine (`BaseVectorDB.delete_all_user_memories`), 
+                called in the graph transaction block to ensure data consistency.
         """
         pass
