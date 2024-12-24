@@ -3,7 +3,7 @@ from typing_extensions import override
 import os
 import uuid
 from qdrant_client import AsyncQdrantClient, models
-from .base import BaseVectorDB
+from .base import BaseVectorDB, MemorySearchScope
 
 
 class QdrantDB(BaseVectorDB):
@@ -78,10 +78,10 @@ class QdrantDB(BaseVectorDB):
             ),
         )
 
-        # Create user_id index
+        # Create org_user_id index
         await self.client.create_payload_index(
             collection_name=self.collection_name,
-            field_name="user_id",
+            field_name="org_user_id",
             field_schema=models.KeywordIndexParams(
                 type="keyword",
                 is_tenant=True,
@@ -115,6 +115,7 @@ class QdrantDB(BaseVectorDB):
         metadata = [
             {
                 "org_id": org_id,
+                "org_user_id": f"{org_id}:{user_id}",
                 "user_id": user_id,
                 "agent_id": agent_id,
                 "obtained_at": obtained_at
@@ -134,14 +135,18 @@ class QdrantDB(BaseVectorDB):
     async def search_memory(
             self,
             query: str,
-            org_id: Optional[str] = None,
-            user_id: Optional[str] = None
+            memory_search_scope: MemorySearchScope,
+            org_id: str,
+            user_id: Optional[str] = None,
+            agent_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
 
         results = await self.search_memories(
             queries=[query],
+            memory_search_scope=memory_search_scope,
             org_id=org_id,
-            user_id=user_id
+            user_id=user_id,
+            agent_id=agent_id
         )
         return results[0] if results else []
 
@@ -149,28 +154,36 @@ class QdrantDB(BaseVectorDB):
     async def search_memories(
             self,
             queries: List[str],
-            org_id: Optional[str] = None,
+            memory_search_scope: MemorySearchScope,
+            org_id: str,
             user_id: Optional[str] = None,
             agent_id: Optional[str] = None
     ) -> List[List[Dict[str, Any]]]:
 
         # Build filter conditions
         filter_conditions = []
-        if org_id:
+
+        if memory_search_scope == MemorySearchScope.ORGANIZATION: # Search memories across the organization.
             filter_conditions.append(
                 models.FieldCondition(
                     key="org_id",
                     match=models.MatchValue(value=org_id)
                 )
             )
-        if user_id:
+        elif memory_search_scope == MemorySearchScope.USER: # Search memories for a specific user in an organization.
+            
+            if user_id is None:
+                raise ValueError("user_id is required in addition to org_id for user-specific search")
+            
             filter_conditions.append(
                 models.FieldCondition(
-                    key="user_id",
-                    match=models.MatchValue(value=user_id)
+                    key="org_user_id",
+                    match=models.MatchValue(value=f"{org_id}:{user_id}")
                 )
             )
-        if agent_id:
+
+
+        if agent_id: # If agent id is provided, filter by agent also regardless of memory search scope.
             filter_conditions.append(
                 models.FieldCondition(
                     key="agent_id",
@@ -212,7 +225,14 @@ class QdrantDB(BaseVectorDB):
             ]
         )
 
-        search_results = [[{'memory': point.payload.pop('document'), **point.payload, 'score': point.score, 'memory_id': point.id} for point in query.points] for query in search_results]
+        search_results = [
+            [
+                {'memory': point.payload.pop('document'), **point.payload, 'score': point.score, 'memory_id': point.id} 
+                for point in query.points
+                if point.score > 0.4 # Filter out low relevance memory.
+            ] 
+            for query in search_results
+            ]
         return search_results
 
     @override

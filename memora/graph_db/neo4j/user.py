@@ -60,6 +60,21 @@ class Neo4jUser(BaseGraphDB):
             await session.execute_write(delete_user_tx)
 
     @override
+    async def get_user(self, org_id: str, user_id: str) -> Dict[str, str]:
+        
+        async def get_user_tx(tx):
+            result = await tx.run("""
+                MATCH (u:User {org_id: $org_id, user_id: $user_id})
+                RETURN u{.org_id, .user_id, .user_name, created_at: toString(u.created_at)} as user
+            """, org_id=org_id, user_id=user_id)
+            record = await result.single()
+            return record["user"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
+            user = await session.execute_read(get_user_tx)
+            return user
+
+    @override
     async def get_all_users(self, org_id: str) -> List[Dict[str, str]]:
 
         async def get_users_tx(tx):

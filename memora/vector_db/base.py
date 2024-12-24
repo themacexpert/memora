@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 import uuid
+from enum import Enum
+
+class MemorySearchScope(Enum):
+    ORGANIZATION = "organization"  # Search across all memories in the organization
+    USER = "user"  # Search across all memories of a specific user in the organization
 
 class BaseVectorDB(ABC):
     """
@@ -47,15 +52,17 @@ class BaseVectorDB(ABC):
     @abstractmethod
     async def search_memory(self,
                          query: str,
-                         org_id: Optional[str] = None,
+                         memory_search_scope: MemorySearchScope,
+                         org_id: str,
                          user_id: Optional[str] = None,
-                         agent_id: Optional[str] = None
+                         agent_id: Optional[str] = None,
                          ) -> List[Dict[str, Any]]:
         """Memory search with optional org/user filtering.
         
         Args:
             query: Search query string
-            org_id: Optional organization ID for filtering
+            memory_search_scope: Memory search scope (organization or user)
+            org_id: Organization ID for filtering
             user_id: Optional user ID for filtering
             agent_id: Optional agent ID for filtering
             
@@ -67,15 +74,17 @@ class BaseVectorDB(ABC):
     @abstractmethod
     async def search_memories(self,
                           queries: List[str],
-                          org_id: Optional[str] = None,
+                          memory_search_scope: MemorySearchScope,
+                          org_id: str,
                           user_id: Optional[str] = None,
-                          agent_id: Optional[str] = None
+                          agent_id: Optional[str] = None,
                           ) -> List[List[Dict[str, Any]]]:
         """Batch memory search with optional org/user filtering.
         
         Args:
             queries: List of search query strings
-            org_id: Optional organization ID for filtering
+            memory_search_scope: Memory search scope (organization or user)
+            org_id: Organization ID for filtering
             user_id: Optional user ID for filtering
             agent_id: Optional agent ID for filtering
             
@@ -126,56 +135,3 @@ class BaseVectorDB(ABC):
             org_id: ID of the organization whose memories should be deleted
         """
         pass
-
-    async def select_top_p_memories_by_score(self,
-                                batch_search_results: List[List[Dict[str, Any]]],
-                                top_p: float = 0.8
-                                ) -> List[Dict[str, Any]]:
-        """Pick top-p memories across batch search results based on their scores.
-
-        Args:
-            batch_search_results: List of lists containing search results. Each result should be a
-                                  dictionary containing at least a 'memory', 'score', 'memory_id', and 'obtained_at' keys
-            top_p: The probability threshold for selecting memories (0 < top_p ≤ 1)
-
-        Returns:
-            List of selected memories ordered by descending score
-
-        Raises:
-            ValueError: If top_p is not between 0 and 1
-        """
-        if not 0 < top_p <= 1:
-            raise ValueError("top_p must be between 0 and 1")
-        
-        if not batch_search_results:
-            return []
-
-        # Efficiently consolidate results using max score per unique memory across batch search results.
-        memory_scores = {}
-        memory_metadata = {}
-        for batch in batch_search_results:
-            for result in batch:
-                memory_id = result.get('memory_id')
-                if memory_id not in memory_scores or result['score'] > memory_scores[memory_id]:
-                    memory_scores[memory_id] = result['score']
-                    memory_metadata[memory_id] = result
-
-        # Sort by score and get top p cumulative.
-        sorted_memories = sorted(memory_scores.items(), key=lambda x: x[1], reverse=True)
-        cumulative_score = 0
-        total_score = sum(score for _, score in sorted_memories)
-        threshold_score = top_p * total_score
-        final_results = []
-
-        for memory_id, score in sorted_memories:
-
-            if score < 0.4: # If memories relevance is less than 0.4, do not add.
-                break
-
-            cumulative_score += score
-            final_results.append(memory_metadata[memory_id])
-
-            if cumulative_score >= threshold_score:
-                break
-
-        return final_results

@@ -90,6 +90,28 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
+    async def get_agent(
+        self,
+        org_id: str,
+        agent_id: str
+    ) -> Dict[str, str]:
+        """Gets a specific agent belonging to the specified organization from the graph database.
+        
+        Args:
+            org_id: UUID string identifying the organization
+            agent_id: UUID string identifying the agent
+
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - user_id: Optional UUID string if agent is associated with a user [:HAS_AGENT].
+            - agent_id: UUID string
+            - agent_label: Agent label/name
+            - created_at: ISO format timestamp
+        """
+        pass
+
+    @abstractmethod
     async def get_all_org_agents(
         self,
         org_id: str
@@ -167,6 +189,27 @@ class BaseGraphDB(ABC):
         Args:
             org_id: UUID string identifying the organization
             user_id: UUID string identifying the user
+        """
+        pass
+
+    @abstractmethod
+    async def get_user(
+        self,
+        org_id: str,
+        user_id: str
+    ) -> Dict[str, str]:
+        """Gets a specific user belonging to the specified organization from the graph database.
+        
+        Args:
+            org_id: UUID string identifying the organization
+            user_id: UUID string identifying the user
+
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - user_id: UUID string
+            - user_name: User's name
+            - created_at: ISO format timestamp
         """
         pass
 
@@ -338,6 +381,68 @@ class BaseGraphDB(ABC):
 
 
     # Memory methods
+    def fetch_user_memories_resolved(self, org_id: str, user_id: str, memory_ids: List[str]) -> List[Dict[str, str]]:
+        """
+        Fetches memories from the GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
+
+        This method performs several operations:
+        1. Retrieves memories using (org_id, user_id, memory_ids)
+        2. If a memory has a CONTRARY_UPDATE relationship, uses the newer memory version
+        3. Replaces user_id & agent_id placeholders (e.g 'user_abc123' or 'agent_xyz789') in memories with actual user names / agent labels
+
+        Args:
+            org_id: UUID string identifying the organization
+            user_id: UUID string identifying the user
+            memory_ids: List of memory IDs to fetch and process
+
+        Returns:
+            List of dictionaries containing memory details:
+            - memory_id: UUID string identifying the memory
+            - memory: String content of the resolved memory 
+            - obtained_at: ISO format timestamp of when the memory was obtained
+
+        Example:
+            >>> memory_ids = ["413ac3a8-fe87-49a4-93d2-05d3eb58ddeb", "376d0e7a-97f7-4380-a673-4f85b1e53625"]
+            >>> memories = graphInstance.fetch_memories_resolved(org_id, user_id, memory_ids)
+            >>> print([memoryObj['memory'] for memoryObj in memories])
+            ["John asked for help with a wedding ring", "Sarah is allergic to peanuts"]
+
+        Note:
+            Memory IDs are typically retrieved from a vector database before being passed to this method.
+        """
+        pass
+
+    def fetch_user_memories_resolved_batch(self, org_id: str, user_id: str, batch_memory_ids: List[List[str]]) -> List[List[Dict[str, str]]]:
+        """
+        Fetches memories from the GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
+
+        This method performs several operations:
+        1. Retrieves memories using (org_id, user_id, memory_ids)
+        2. If a memory has a CONTRARY_UPDATE relationship, uses the newer memory version
+        3. Replaces user_id & agent_id placeholders (e.g 'user_abc123' or 'agent_xyz789') in memories with actual user names / agent labels
+
+        Args:
+            org_id: UUID string identifying the organization
+            user_id: UUID string identifying the user
+            batch_memory_ids: List of Lists containing memory IDs to fetch and process
+
+        Returns:
+            List of Lists containing dictionaries with memory details:
+            - memory_id: UUID string identifying the memory
+            - memory: String content of the resolved memory 
+            - obtained_at: ISO format timestamp of when the memory was obtained
+
+        Example:
+            >>> batch_memory_ids = [["413ac3a8-fe87-49a4-93d2-05d3eb58ddeb", "376d0e7a-97f7-4380-a673-4f85b1e53625"], ["6423b2e2-4223-43ec-aef7-69ce3ed512fb"]]
+            >>> batch_memories = graphInstance.fetch_memories_resolved_batch(org_id, user_id, batch_memory_ids)
+            >>> print([[memoryObj['memory'] for memoryObj in memories] for memories in batch_memories])
+            [["John asked for help with a wedding ring", "Sarah is allergic to peanuts"], ["John is about to propose to Sarah"]]
+
+        Note:
+            Batch Memory IDs are typically retrieved from a vector database before being passed to this method.
+        """
+        pass
+
     @abstractmethod
     async def get_user_memory(
         self,

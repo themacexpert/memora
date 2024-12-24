@@ -62,6 +62,20 @@ class Neo4jAgent(BaseGraphDB):
             await session.execute_write(delete_agent_tx)
 
     @override
+    async def get_agent(self, org_id: str, agent_id: str) -> Dict[str, str]:
+
+        async def get_agent_tx(tx):
+            result = await tx.run("""
+                MATCH (a:Agent {org_id: $org_id, agent_id: $agent_id})
+                RETURN a{.org_id, .user_id, .agent_id, .agent_label, created_at: toString(a.created_at)} as agent
+            """, org_id=org_id, agent_id=agent_id)
+            record = await result.single()
+            return record["agent"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
+            return await session.execute_read(get_agent_tx)
+
+    @override
     async def get_all_org_agents(self, org_id: str) -> List[Dict[str, str]]:
 
         async def get_org_agents_tx(tx):
