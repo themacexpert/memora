@@ -8,12 +8,11 @@ from memora.llm_backends.azure_openai_backend_llm import AzureOpenAIBackendLLM
 from memora.llm_backends.base import BaseBackendLLM
 from memora.llm_backends.together_backend_llm import TogetherBackendLLM
 from memora.prompts.filter_retrieved_memories import FILTER_RETRIEVED_MEMORIES_SYSTEM_PROMPT
-from memora.prompts.memory_extraction import COMPARE_EXISTING_AND_NEW_MEMORIES_PROMPT_TEMPLATE, COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT, MEMORY_EXTRACTION_SYSTEM_PROMPT
+from memora.prompts.memory_extraction import COMPARE_EXISTING_AND_NEW_MEMORIES_PROMPT_TEMPLATE, COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT, MEMORY_EXTRACTION_SYSTEM_PROMPT, UPDATED_MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT
 from memora.prompts.memory_search_from_msg import MSG_MEMORY_SEARCH_PROMPT, MSG_MEMORY_SEARCH_TEMPLATE
 from memora.schema.extraction_schema import EXTRACTION_MSG_BLOCK_FORMAT, ExtractionMemoryResponse, MemoryComparisonUpdateResponse
 from memora.schema.save_memory_schema import ContraryMemory, MemoriesAndInteraction, MemoryToStore
 from memora.vector_db.base import BaseVectorDB, MemorySearchScope
-from memora.vector_db.qdrant import QdrantDB
 
 # Load the .env file
 load_dotenv()
@@ -190,8 +189,8 @@ class Memora:
             try:
                 current_day_of_week = datetime.fromisoformat(current_datetime_str).strftime('%A')
 
-                user = self.graph.get_user(org_id, user_id)
-                agent = self.graph.get_agent(org_id, agent_id)
+                user = await self.graph.get_user(org_id, user_id)
+                agent = await self.graph.get_agent(org_id, agent_id)
 
                 if not user:
                     raise Exception(f"User with ID {user_id} not found in the database.")
@@ -205,10 +204,8 @@ class Memora:
                 system_content = MEMORY_EXTRACTION_SYSTEM_PROMPT.format(
                     day_of_week=current_day_of_week,
                     current_datetime_str=current_datetime_str,
-                    agent_placeholder=agent_placeholder,
                     agent_label=agent['agent_label'],
                     user_name=user['user_name'],
-                    user_placeholder=user_placeholder,
                     extract_for_agent=f'and {agent['agent_label']}' if extract_agent_memories else '',
                     schema=ExtractionMemoryResponse.model_json_schema()
                 )
@@ -324,7 +321,7 @@ class Memora:
         user_id: str,
         agent_id: str,
         interaction_id: str,
-        interaction: List[Dict[str, str]],
+        updated_interaction: List[Dict[str, str]],
         current_datetime_str: str = datetime.now().isoformat(),
         extract_agent_memories: bool = False,
         update_across_agents: bool = True,
@@ -335,8 +332,9 @@ class Memora:
             try:
                 current_day_of_week = datetime.fromisoformat(current_datetime_str).strftime('%A')
 
-                user = self.graph.get_user(org_id, user_id)
-                agent = self.graph.get_agent(org_id, agent_id)
+                user = await self.graph.get_user(org_id, user_id)
+                agent = await self.graph.get_agent(org_id, agent_id)
+                previously_extracted_memories: List[Dict[str, str]] = await self.graph.get_all_interaction_memories(org_id, user_id, interaction_id)
 
                 if not user:
                     raise Exception(f"User with ID {user_id} not found in the database.")
@@ -347,14 +345,13 @@ class Memora:
                 user_placeholder = f"user_{user['user_id']}"
                 agent_placeholder = f"agent_{agent['agent_id']}"
 
-                system_content = MEMORY_EXTRACTION_SYSTEM_PROMPT.format(
+                system_content = UPDATED_MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT.format(
                     day_of_week=current_day_of_week,
                     current_datetime_str=current_datetime_str,
-                    agent_placeholder=agent_placeholder,
                     agent_label=agent['agent_label'],
                     user_name=user['user_name'],
-                    user_placeholder=user_placeholder,
                     extract_for_agent=f'and {agent['agent_label']}' if extract_agent_memories else '',
+                    previous_memories=str(previously_extracted_memories),
                     schema=ExtractionMemoryResponse.model_json_schema()
                 )
 
@@ -365,7 +362,7 @@ class Memora:
                         'role': msg['role'], 
                         'content': EXTRACTION_MSG_BLOCK_FORMAT.format(message_id=i, content=msg['content'])
                     }
-                    for i, msg in enumerate(interaction)
+                    for i, msg in enumerate(updated_interaction)
                 ]
 
                 response : ExtractionMemoryResponse = await self.extraction_model(messages=messages, output_schema_model=ExtractionMemoryResponse)
@@ -394,18 +391,19 @@ class Memora:
                     )
 
                     if not existing_memories:
-                        interaction_id = await self.graph.save_interaction_with_memories(
+                        interaction_id, updated_time = await self.graph.update_interaction_and_memories(
                             org_id,
                             agent_id,
                             user_id,
-                            memories_and_interaction=MemoriesAndInteraction(
-                                interaction=interaction, 
+                            interaction_id,
+                            updated_memories_and_interaction=MemoriesAndInteraction(
+                                interaction=updated_interaction, 
                                 interaction_date=datetime.fromisoformat(current_datetime_str),
                                 memories=[MemoryToStore(memory=memory, source_message_block_pos=source_msgs) for memory, source_msgs in zip(candidate_memories, candidate_memories_msg_ids)]
                                 ),
                             vector_db_add_memories_fn=self.vector_db.add_memories
                         )
-                        return interaction_id
+                        return interaction_id, updated_time
                     else:
 
                         candidate_memories = [{'memory': memory, 'POS_ID': i} for i, memory in enumerate(candidate_memories)]
@@ -441,12 +439,13 @@ class Memora:
                                 new_contradictory_memories.append((memory.memory, candidate_memories_msg_ids[memory.source_candidate_pos_id], memory.contradicted_memory_id))
                             except: continue
 
-                        interaction_id = await self.graph.save_interaction_with_memories(
+                        interaction_id, updated_time = await self.graph.update_interaction_and_memories(
                             org_id,
                             agent_id,
                             user_id,
-                            memories_and_interaction=MemoriesAndInteraction(
-                                interaction=interaction, 
+                            interaction_id,
+                            updated_memories_and_interaction=MemoriesAndInteraction(
+                                interaction=updated_interaction, 
                                 interaction_date=datetime.fromisoformat(current_datetime_str),
                                 memories=[MemoryToStore(memory=memory_tuple[0], source_message_block_pos=memory_tuple[1]) for memory_tuple in new_memories],
                                 contrary_memories=[ContraryMemory(memory=memory_tuple[0], source_message_block_pos=memory_tuple[1], existing_contradicted_memory_id=memory_tuple[2]) for memory_tuple in new_contradictory_memories]
@@ -454,7 +453,7 @@ class Memora:
                             vector_db_add_memories_fn=self.vector_db.add_memories
                         )
 
-                        return interaction_id
+                        return interaction_id, updated_time
                         
             except Exception as e:
                 if retry == max_retries:
@@ -479,17 +478,14 @@ class Memora:
 
         memory_search_queries: List[str] = await self._get_memory_search_queries(current_datetime_str, latest_msg, preceding_msg_for_context)
         
-        print(memory_search_queries)
         if memory_search_queries:
             retrieved_memories = await self.search_memories_as_one(org_id, user_id, memory_search_queries, agent_id, search_memories_across_agents)
-            print(retrieved_memories)
             
             if not enable_final_model_based_memory_filter:
                 return retrieved_memories
             else:
                 # Filter memories based on final model's output.
                 filtered_memories_ids = await self._filter_retrieved_memories_with_final_model(current_datetime_str, latest_msg, memory_search_queries, retrieved_memories)
-                print(filtered_memories_ids)
 
                 if filtered_memories_ids is None: # The LLM was unable to filter just needed memories.
                     return retrieved_memories
