@@ -1,15 +1,14 @@
 MSG_MEMORY_SEARCH_PROMPT ="""
-You are {agent_label}'s memory agent. Your task is to generate memory search queries based on the latest message from {user_name}.
+You are a memory agent. Your task is to generate memory search queries based on the latest message to the room.
 
 Input:
-- Latest message from {user_name}
+- Latest message to the room
 - Previous conversation messages (if provided, and is useful for context)
 
 Instructions:
 1. Generate at least 2 search queries to retrieve relevant memories for responding
-2. Use 'agent' / 'user' instead of {agent_label} or {user_name} in the query
-3. Focus only on memory needs for the latest message
-4. No explanations or responses - just search queries
+2. Focus only on memory needs for the latest message
+3. No explanations or responses - just search queries
 
 Response Format:
 && MEMORY_SEARCH &&
@@ -18,9 +17,9 @@ Response Format:
 
 Random Example (JUST EXAMPLE DO NOT USE ANY INFO HERE):
 && MEMORY_SEARCH &&
-    << user vacation in San Francisco with Sarah >>
-    << user and Sarah's visit to the Golden Gate Bridge >>
-    << Sarah planning a trip with user >>
+    << Ava vacation in San Francisco with Sarah >>
+    << Ava and Sarah's visit to the Golden Gate Bridge >>
+    << Sarah planning a trip with John >>
 """
 
 MSG_MEMORY_SEARCH_TEMPLATE = """

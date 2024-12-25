@@ -18,7 +18,7 @@ Given an interaction between ({agent_label}) and ({user_name}).
 >>>>>>> ENTIRE INTERACTION IS BELOW <<<<<<<
 """
 
-UPDATED_MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT = """ 
+MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT = """ 
 The Current Date & Time is {day_of_week}, {current_datetime_str}. 
 Given an interaction between ({agent_label}) and ({user_name}). 
 
@@ -62,7 +62,7 @@ You are given existing stored memories and candidate new memories.
 
 """
 
-COMPARE_EXISTING_AND_NEW_MEMORIES_PROMPT_TEMPLATE = """
+COMPARE_EXISTING_AND_NEW_MEMORIES_INPUT_TEMPLATE = """
 ====
 EXISTING MEMORIES 
 ====

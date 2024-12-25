@@ -103,7 +103,7 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_id=interaction_id,
             interaction_date=memories_and_interaction.interaction_date.isoformat(),
             memories_and_source=[
-                    (memory_id, memory_obj.memory, memory_obj.source_message_block_pos) 
+                    (memory_id, memory_obj.memory, memory_obj.source_msg_block_pos) 
                     for memory_id, memory_obj in 
                     zip(
                         (new_memory_ids + new_contrary_memory_ids), # All memory ids
@@ -123,7 +123,7 @@ class Neo4jInteraction(BaseGraphDB):
 
             """, org_id=org_id, user_id=user_id,
                 contrary_and_existing_ids=[
-                        (contrary_memory_id, contrary_memory_obj.existing_contradicted_memory_id) 
+                        (contrary_memory_id, contrary_memory_obj.existing_contrary_memory_id) 
                         for contrary_memory_id, contrary_memory_obj in 
                         zip(new_contrary_memory_ids, memories_and_interaction.contrary_memories)
                     ]
@@ -137,7 +137,7 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         memories_and_interaction: MemoriesAndInteraction,
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
-    ) -> str:
+    ) -> Tuple[str, str]:
         
         interaction_id = shortuuid.uuid()
         new_memory_ids = [str(uuid.uuid4()) for _ in len(memories_and_interaction.memories)]
@@ -173,21 +173,24 @@ class Neo4jInteraction(BaseGraphDB):
             # Add the messages to the interaction.
             await self._add_messages_to_interaction_from_top(tx, org_id, user_id, interaction_id, memories_and_interaction.interaction)
 
-            # Add the all memories (new & new contrary) and connect to their interaction message source.
-            await self._add_memories_with_their_source_links(tx, org_id, user_id, agent_id, interaction_id, memories_and_interaction, new_memory_ids, new_contrary_memory_ids)
+            if new_memory_ids or new_contrary_memory_ids:
+                # Add the all memories (new & new contrary) and connect to their interaction message source.
+                await self._add_memories_with_their_source_links(tx, org_id, user_id, agent_id, interaction_id, memories_and_interaction, new_memory_ids, new_contrary_memory_ids)
 
-            # Link the new contary memories as updates to the old memory they contradicted.
-            await self._link_update_contrary_memories_to_existing_memories(tx, org_id, user_id, new_contrary_memory_ids, memories_and_interaction)
+            if new_contrary_memory_ids:
+                # Link the new contary memories as updates to the old memory they contradicted.
+                await self._link_update_contrary_memories_to_existing_memories(tx, org_id, user_id, new_contrary_memory_ids, memories_and_interaction)
 
-            # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
-            await vector_db_add_memories_fn(
-                    org_id=org_id, user_id=user_id, agent_id=agent_id,
-                    memory_ids=(new_memory_ids + new_contrary_memory_ids), # All memory ids
-                    memories=[memory_obj.memory for memory_obj in (memories_and_interaction.memories + memories_and_interaction.contrary_memories)], # All memories                            
-                    obtained_at=memories_and_interaction.interaction_date.isoformat()
-                    )
+            if new_memory_ids or new_contrary_memory_ids:
+                # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
+                await vector_db_add_memories_fn(
+                        org_id=org_id, user_id=user_id, agent_id=agent_id,
+                        memory_ids=(new_memory_ids + new_contrary_memory_ids), # All memory ids
+                        memories=[memory_obj.memory for memory_obj in (memories_and_interaction.memories + memories_and_interaction.contrary_memories)], # All memories                            
+                        obtained_at=memories_and_interaction.interaction_date.isoformat()
+                        )
 
-            return interaction_id
+            return interaction_id, memories_and_interaction.interaction_date.isoformat()
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
             return await session.execute_write(save_tx)
@@ -245,8 +248,11 @@ class Neo4jInteraction(BaseGraphDB):
                 # Replace from truncated point (now last message) with the new messages.
                 await self._append_messages_to_interaction(tx, org_id, user_id, interaction_id, updated_memories_and_interaction.interaction)
         
-            await self._add_memories_with_their_source_links(tx, org_id, user_id, agent_id, interaction_id, updated_memories_and_interaction, new_memory_ids, new_contrary_memory_ids)
-            await self._link_update_contrary_memories_to_existing_memories(tx, org_id, user_id, new_contrary_memory_ids, updated_memories_and_interaction)
+            if new_memory_ids or new_contrary_memory_ids:
+                await self._add_memories_with_their_source_links(tx, org_id, user_id, agent_id, interaction_id, updated_memories_and_interaction, new_memory_ids, new_contrary_memory_ids)
+
+            if new_contrary_memory_ids:
+                await self._link_update_contrary_memories_to_existing_memories(tx, org_id, user_id, new_contrary_memory_ids, updated_memories_and_interaction)
 
             # Update the interaction agent, updated_at datetime, and connect occurance to the particular date.
             await tx.run("""
@@ -266,13 +272,14 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_id=interaction_id, 
             updated_date=updated_memories_and_interaction.interaction_date.isoformat())
 
-            # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
-            await vector_db_add_memories_fn(
-                    org_id=org_id, user_id=user_id, agent_id=agent_id,
-                    memory_ids=(new_memory_ids + new_contrary_memory_ids), # All memory ids
-                    memories=[memory_obj.memory for memory_obj in (updated_memories_and_interaction.memories + updated_memories_and_interaction.contrary_memories)], # All memories                            
-                    obtained_at=updated_memories_and_interaction.interaction_date.isoformat()
-                    )
+            if new_memory_ids or new_contrary_memory_ids:
+                # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
+                await vector_db_add_memories_fn(
+                        org_id=org_id, user_id=user_id, agent_id=agent_id,
+                        memory_ids=(new_memory_ids + new_contrary_memory_ids), # All memory ids
+                        memories=[memory_obj.memory for memory_obj in (updated_memories_and_interaction.memories + updated_memories_and_interaction.contrary_memories)], # All memories                            
+                        obtained_at=updated_memories_and_interaction.interaction_date.isoformat()
+                        )
 
             return interaction_id, updated_memories_and_interaction.interaction_date.isoformat()
 

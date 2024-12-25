@@ -243,7 +243,7 @@ class BaseGraphDB(ABC):
         user_id: str,
         memories_and_interaction: MemoriesAndInteraction,
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
-    ) -> str:
+    ) -> Tuple[str, str]:
         """Creates a new interaction record with associated memories.
         
         Args:
@@ -255,7 +255,9 @@ class BaseGraphDB(ABC):
                 called in the graph transaction block to ensure data consistency.
         
         Returns:
+            Tuple containing:
             - interaction_id: UUID string identifying the created interaction
+            - created_at: ISO format timestamp of when the interaction was created
         """
         pass
 

@@ -99,9 +99,6 @@ class BaseVectorDB(ABC):
         
         Args:
             memory_id: ID of the memory to delete
-            
-        Raises:
-            KeyError: If the memory_id doesn't exist
         """
         pass
 
@@ -111,9 +108,6 @@ class BaseVectorDB(ABC):
         
         Args:
             memory_ids: List of memory IDs to delete
-            
-        Raises:
-            KeyError: If any of the memory_ids don't exist
         """
         pass
 

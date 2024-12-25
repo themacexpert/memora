@@ -251,21 +251,14 @@ class QdrantDB(BaseVectorDB):
 
     @override
     async def delete_all_user_memories(self, org_id: str, user_id: str) -> None:
-        filter_conditions = [
-            models.FieldCondition(
-                key="org_id",
-                match=models.MatchValue(value=org_id)
-            ),
-            models.FieldCondition(
-                key="user_id",
-                match=models.MatchValue(value=user_id)
-            )
-        ]
 
         await self.client.delete(
             collection_name=self.collection_name,
             points_selector=models.Filter(
-                must=filter_conditions
+                must=models.FieldCondition(
+                    key="org_user_id",
+                    match=models.MatchValue(value=f"{org_id}:{user_id}")
+                )
             )
         )
 
