@@ -4,18 +4,12 @@ import neo4j
 
 from ..base import BaseGraphDB
 
+from typing import Dict
+
 class Neo4jOrganization(BaseGraphDB):
 
     @override
-    async def create_organization(self, org_name: str) -> dict:
-        """Creates a new organization in Neo4j.
-        
-        Args:
-            org_name: Name of the organization to create
-            
-        Returns:
-            Dict containing org_id, org_name and created_at
-        """
+    async def create_organization(self, org_name: str) -> Dict[str, str]:
         org_id = shortuuid.uuid()
         
         async def create_org_tx(tx):
@@ -37,15 +31,25 @@ class Neo4jOrganization(BaseGraphDB):
             return org_data
 
     @override
-    async def delete_organization(self, org_id: str) -> None:
-        """
-        Deletes an organization and all its associated data from Neo4j.
-        
-        ⚠️ DANGER: This operation will delete all nodes and relationships from this organization this includes users, agents, memeories, interactions e.t.c
+    async def update_organization(self, org_id: str, new_org_name: str) -> Dict[str, str]:
+        async def update_org_tx(tx):
+            result = await tx.run("""
+                MATCH (o:Org {org_id: $org_id})
+                SET o.org_name = $new_org_name
+                RETURN o{.org_id, .org_name} as org
+            """, 
+            org_id=org_id, new_org_name=new_org_name)
 
-        Args:
-            org_id: UUID of the organization to delete
-        """
+            record = await result.single()
+            return record["org"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
+            org_data = await session.execute_write(update_org_tx)
+            return org_data
+    
+    @override
+    async def delete_organization(self, org_id: str) -> None:
+
         async def delete_org_tx(tx):
             # Delete all nodes and relationships associated with the org
             await tx.run("""
@@ -59,3 +63,18 @@ class Neo4jOrganization(BaseGraphDB):
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
             await session.execute_write(delete_org_tx)
+
+    @override
+    async def get_organization(self, org_id: str) -> Dict[str, str]:
+        
+        async def get_org_tx(tx):
+            result = await tx.run("""
+                MATCH (o:Org {org_id: $org_id})
+                RETURN o{.org_id, .org_name, created_at: toString(o.created_at)} as org
+            """, org_id=org_id)
+            record = await result.single()
+            return record["org"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
+            org_data = await session.execute_read(get_org_tx)
+            return org_data

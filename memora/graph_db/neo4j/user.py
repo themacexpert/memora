@@ -42,6 +42,23 @@ class Neo4jUser(BaseGraphDB):
             return user_data
 
     @override
+    async def update_user(self, org_id: str, user_id: str, new_user_name: str) -> Dict[str, str]:
+        async def update_user_tx(tx):
+            result = await tx.run("""
+                MATCH (u:User {org_id: $org_id, user_id: $user_id})
+                SET u.user_name = $new_user_name
+                RETURN u{.org_id, .user_id, .user_name} as user
+            """, 
+            org_id=org_id, user_id=user_id, new_user_name=new_user_name)
+
+            record = await result.single()
+            return record["user"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
+            user_data = await session.execute_write(update_user_tx)
+            return user_data
+
+    @override
     async def delete_user(self, org_id: str, user_id: str) -> None:
 
         async def delete_user_tx(tx):

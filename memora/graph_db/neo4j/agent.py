@@ -49,6 +49,23 @@ class Neo4jAgent(BaseGraphDB):
             return agent_data
 
     @override
+    async def update_agent(self, org_id: str, agent_id: str, new_agent_label: str) -> Dict[str, str]:
+        async def update_agent_tx(tx):
+            result = await tx.run("""
+                MATCH (a:Agent {org_id: $org_id, agent_id: $agent_id})
+                SET a.agent_label = $new_agent_label
+                RETURN a{.org_id, .agent_id, .agent_label} as agent
+            """, 
+            org_id=org_id, agent_id=agent_id, new_agent_label=new_agent_label)
+
+            record = await result.single()
+            return record["agent"]
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:
+            agent_data = await session.execute_write(update_agent_tx)
+            return agent_data
+
+    @override
     async def delete_agent(self, org_id: str, agent_id: str) -> None:
 
         async def delete_agent_tx(tx):

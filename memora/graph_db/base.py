@@ -38,14 +38,50 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
+    async def update_organization(
+        self,
+        org_id: str,
+        new_org_name: str
+    ) -> Dict[str, str]:
+        """Updates an existing organization in the graph database.
+        
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - org_name: Organization name
+        """
+        pass
+
+    @abstractmethod
     async def delete_organization(
         self,
         org_id: str
     ) -> None:
-        """Deletes an organization from the graph database.
+        """
+        Deletes an organization from the graph database.
+
+        ⚠️ DANGER: This operation will delete all nodes and relationships from this organization this includes users, agents, memeories, interactions e.t.c
         
         Args:
             org_id: UUID string identifying the organization
+        """
+        pass
+
+    @abstractmethod
+    async def get_organization(
+        self,
+        org_id: str
+    ) -> Dict[str, str]:
+        """Gets a specific organization from the graph database.
+        
+        Args:
+            org_id: UUID string identifying the organization
+
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - org_name: Organization name
+            - created_at: ISO format timestamp
         """
         pass
 
@@ -72,6 +108,23 @@ class BaseGraphDB(ABC):
             - agent_id: UUID string 
             - agent_label: Agent label/name
             - created_at: ISO format timestamp
+        """
+        pass
+
+    @abstractmethod
+    async def update_agent(
+        self,
+        org_id: str,
+        agent_id: str,
+        new_agent_label: str
+    ) -> Dict[str, str]:
+        """Updates an existing agent in the graph database.
+        
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - agent_id: UUID string
+            - agent_label: Agent label/name
         """
         pass
 
@@ -175,6 +228,23 @@ class BaseGraphDB(ABC):
             - user_id: UUID string
             - user_name: User's name
             - created_at: ISO format timestamp
+        """
+        pass
+
+    @abstractmethod
+    async def update_user(
+        self,
+        org_id: str,
+        user_id: str,
+        new_user_name: str
+    ) -> Dict[str, str]:
+        """Updates an existing user in the graph database.
+        
+        Returns:
+            Dict containing:
+            - org_id: UUID string
+            - user_id: UUID string
+            - user_name: User's name
         """
         pass
 
