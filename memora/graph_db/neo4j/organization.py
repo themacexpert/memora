@@ -54,7 +54,7 @@ class Neo4jOrganization(BaseGraphDB):
                 CALL apoc.path.subgraphNodes(o, {}) YIELD node
                 RETURN node",
                 "DETACH DELETE node",
-                {batchSize: 1000, parallel: true})
+                {batchSize: 1000, parallel: true, params: {org_id: $org_id}})
             """, org_id=org_id)
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.WRITE_ACCESS) as session:

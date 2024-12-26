@@ -203,13 +203,13 @@ class QdrantDB(BaseVectorDB):
                         models.Prefetch(
                             query=models.SparseVector(indices=sparse.indices, values=sparse.values),
                             using=self.client.get_sparse_vector_field_name(),
-                            limit=6
+                            limit=10
                         ),
                         models.Prefetch(
                             query=dense,
                             using=self.client.get_vector_field_name(),
-                            score_threshold=0.4,
-                            limit=6
+                            score_threshold=0.35,
+                            limit=10
                         )
                     ],
 
@@ -229,7 +229,7 @@ class QdrantDB(BaseVectorDB):
             [
                 {'memory': point.payload.pop('document'), **point.payload, 'score': point.score, 'memory_id': point.id} 
                 for point in query.points
-                if point.score > 0.4 # Filter out low relevance memory.
+                if point.score > 0.35 # Filter out low relevance memory.
             ] 
             for query in search_results
             ]

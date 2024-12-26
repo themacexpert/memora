@@ -1,2 +1,8 @@
 test.ipynb
+
+# Environment variables.
+.env
+
+# Cache
+/cache
 **/__pycache__

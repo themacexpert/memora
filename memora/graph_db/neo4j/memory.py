@@ -22,7 +22,7 @@ class Neo4jMemory(BaseGraphDB):
                 UNWIND $batch_memory_ids AS memory_ids
                 CALL (user, memory_ids) {
                     UNWIND memory_ids AS id
-                    MATCH (memory:Memory {org_id: $org_id, user_id: $user_id, memory_id: memory_id})
+                    MATCH (memory:Memory {org_id: $org_id, user_id: $user_id, memory_id: id})
                                   
                     // Use the most up to date contrary update memory if it exists
                     OPTIONAL MATCH (memory)-[:CONTRARY_UPDATE*]->(contraryMemory:Memory) WHERE NOT (contraryMemory)-[:CONTRARY_UPDATE]->()

@@ -64,7 +64,7 @@ class Memora:
         await self.extraction_model.close()
 
     async def generate_memory_search_queries(self,
-                                    message: Dict[str, str], 
+                                    message: str, 
                                     preceding_messages_for_context: Optional[List[Dict[str, str]]] = [],
                                     current_datetime: datetime = datetime.now()
                                    ) -> List[str]:
@@ -72,13 +72,15 @@ class Memora:
         Generate memory search queries based on the given message and context.
 
         Args:
-            message (Dict[str, str]): The current message.
+            message (str): The message to recall memories for.
             preceding_messages_for_context (Optional[List[Dict[str, str]]]): Preceding messages for context.
             current_datetime (datetime): Current datetime.
 
         Returns:
             List[str]: List of generated memory search queries.
         """
+
+
         current_day_of_week = current_datetime.strftime('%A')
         response = await self.memory_search_model(
             messages=[
@@ -101,7 +103,7 @@ class Memora:
         return [arg.strip() for arg in arguments_passed] if arguments_passed else []
 
     async def filter_retrieved_memories_with_model(self,
-                                    message: Dict[str, str], 
+                                    message: str, 
                                     search_queries_used: List[str],
                                     retrieved_memories: List[Dict[str, str]],
                                     current_datetime: datetime = datetime.now(),
@@ -110,7 +112,7 @@ class Memora:
         Filter retrieved memories using the memory search model.
 
         Args:
-            message (Dict[str, str]): The current message.
+            message (str): The message that triggered the search queries and retrieved memories.
             search_queries_used (List[str]): List of search queries used.
             retrieved_memories (List[Dict[str, str]]): List of retrieved memories.
             current_datetime (datetime): Current datetime.
@@ -164,6 +166,8 @@ class Memora:
             agent_id=agent_id if not memories_across_agents else None
         )
 
+        print(batch_results)
+
         memory_ids = [memory['memory_id'] for result in batch_results for memory in result]
 
         if not memory_ids:
@@ -193,6 +197,8 @@ class Memora:
             user_id=user_id,
             agent_id=agent_id if not memories_across_agents else None
         )
+
+        print(batch_results)
 
         batch_memory_ids = [[memory['memory_id'] for memory in result] for result in batch_results]
 
@@ -246,7 +252,7 @@ class Memora:
                         current_datetime_str=current_datetime.isoformat(),
                         agent_label=agent['agent_label'],
                         user_name=user['user_name'],
-                        extract_for_agent=f'and {agent['agent_label']}' if extract_agent_memories else '',
+                        extract_for_agent=f"and {agent['agent_label']}" if extract_agent_memories else '',
                         previous_memories=str(previously_extracted_memories),
                         schema=MemoryExtractionResponse.model_json_schema()
                     )
@@ -257,7 +263,7 @@ class Memora:
                         current_datetime_str=current_datetime.isoformat(),
                         agent_label=agent['agent_label'],
                         user_name=user['user_name'],
-                        extract_for_agent=f'and {agent['agent_label']}' if extract_agent_memories else '',
+                        extract_for_agent=f"and {agent['agent_label']}" if extract_agent_memories else '',
                         schema=MemoryExtractionResponse.model_json_schema()
                     )
 
@@ -444,7 +450,7 @@ class Memora:
         self, 
         org_id: str,
         user_id: str,  
-        latest_msg: Dict[str, str], 
+        latest_msg: str, 
         agent_id: Optional[str] = None,
         preceding_msg_for_context: Optional[List[Dict[str, str]]] = [], 
         current_datetime: datetime = datetime.now(),
@@ -457,7 +463,7 @@ class Memora:
         Args:
             org_id (str): Organization ID.
             user_id (str): User ID.
-            latest_msg (Dict[str, str]): The latest message to find memories for.
+            latest_msg (str): The latest message from user to find memories for.
             agent_id (Optional[str]): Agent ID.
             preceding_msg_for_context (Optional[List[Dict[str, str]]]): Preceding messages for context.
             current_datetime (datetime): Current datetime.
@@ -467,6 +473,7 @@ class Memora:
         Returns:
             Optional[List[Dict[str, str]]]: Retrieved and filtered memories, or None if no relevant memories found.
         """
+
         memory_search_queries = await self.generate_memory_search_queries(latest_msg, preceding_msg_for_context, current_datetime)
         
         if not memory_search_queries:
