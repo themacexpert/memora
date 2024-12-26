@@ -83,8 +83,8 @@ class Neo4jAgent(BaseGraphDB):
                 MATCH (o:Org {org_id: $org_id})-[:HAS_AGENT]->(a:Agent)
                 RETURN a{.org_id, .agent_id, .agent_label, created_at: toString(a.created_at)} as agent
             """, org_id=org_id)
-            records = await result.fetch()
-            return [record["agent"] for record in records]
+            records = await result.value("agent", [])
+            return records
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
             agents = await session.execute_read(get_org_agents_tx)
@@ -98,8 +98,8 @@ class Neo4jAgent(BaseGraphDB):
                 MATCH (u:User {org_id: $org_id, user_id: $user_id})-[:HAS_AGENT]->(a:Agent)
                 RETURN a{.org_id, .user_id, .agent_id, .agent_label, created_at: toString(a.created_at)} as agent
             """, org_id=org_id, user_id=user_id)
-            records = await result.fetch()
-            return [record["agent"] for record in records]
+            records = await result.value("agent", [])
+            return records
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
             agents = await session.execute_read(get_user_agents_tx)

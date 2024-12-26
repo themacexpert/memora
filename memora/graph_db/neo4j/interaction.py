@@ -140,8 +140,8 @@ class Neo4jInteraction(BaseGraphDB):
     ) -> Tuple[str, str]:
         
         interaction_id = shortuuid.uuid()
-        new_memory_ids = [str(uuid.uuid4()) for _ in len(memories_and_interaction.memories)]
-        new_contrary_memory_ids = [str(uuid.uuid4()) for _ in len(memories_and_interaction.contrary_memories)]
+        new_memory_ids = [str(uuid.uuid4()) for _ in range(len(memories_and_interaction.memories))]
+        new_contrary_memory_ids = [str(uuid.uuid4()) for _ in range(len(memories_and_interaction.contrary_memories))]
 
         async def save_tx(tx):
 
@@ -206,8 +206,8 @@ class Neo4jInteraction(BaseGraphDB):
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
     ) -> Tuple[str, str]:
 
-        new_memory_ids = [str(uuid.uuid4()) for _ in len(updated_memories_and_interaction.memories)]
-        new_contrary_memory_ids = [str(uuid.uuid4()) for _ in len(updated_memories_and_interaction.contrary_memories)]
+        new_memory_ids = [str(uuid.uuid4()) for _ in range(len(updated_memories_and_interaction.memories))]
+        new_contrary_memory_ids = [str(uuid.uuid4()) for _ in range(len(updated_memories_and_interaction.contrary_memories))]
         
         # First get the existing messages.
         existing_messages: List[Dict[str, str]] = await self.get_interaction_messages(org_id, user_id, interaction_id)

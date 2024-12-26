@@ -82,8 +82,8 @@ class Neo4jUser(BaseGraphDB):
                 MATCH (o:Org {org_id: $org_id})<-[:BELONGS_TO]-(u:User)
                 RETURN u{.org_id, .user_id, .user_name, created_at: toString(u.created_at)} as user
             """, org_id=org_id)
-            records = await result.fetch()
-            return [record["user"] for record in records]
+            records = await result.value("user", [])
+            return records
 
         async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
             users = await session.execute_read(get_users_tx)
