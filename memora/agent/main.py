@@ -1,6 +1,6 @@
 from datetime import datetime
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from dotenv import load_dotenv
 
 from memora.graph_db.base import BaseGraphDB
@@ -40,7 +40,7 @@ class Memora:
             memory_search_model: BaseBackendLLM = TogetherBackendLLM(
                 model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", max_tokens=512, max_retries=0),
             extraction_model: BaseBackendLLM = AzureOpenAIBackendLLM(
-                model="gpt-4o-standard", max_tokens=8000, max_retries=0),
+                model="gpt-4o", max_tokens=8000, max_retries=0),
             ):
         """
         Initialize the Memora instance.
@@ -107,7 +107,7 @@ class Memora:
                                     search_queries_used: List[str],
                                     retrieved_memories: List[Dict[str, str]],
                                     current_datetime: datetime = datetime.now(),
-                                   ) -> Optional[List[str]]:
+                                   ) -> Optional[Set[str]]:
         """
         Filter retrieved memories using the memory search model.
 
@@ -118,7 +118,7 @@ class Memora:
             current_datetime (datetime): Current datetime.
 
         Returns:
-            Optional[List[str]]: List of selected memory IDs (that passed the filter), or None if unable to analyze.
+            Optional[Set[str]]: Distinct Set of selected memory IDs (that passed the filter), or None if unable to analyze.
         """
         current_day_of_week = current_datetime.strftime('%A')
         response = await self.memory_search_model(
@@ -129,7 +129,7 @@ class Memora:
                         day_of_week=current_day_of_week,
                         current_datetime_str=current_datetime.isoformat(),
                         latest_room_message=str(message),
-                        search_queries="\n- ".join(search_queries_used)
+                        memory_search_queries="\n- ".join(search_queries_used)
                     )
                 },
                 {"role": "user", "content": str(retrieved_memories)},
@@ -142,9 +142,10 @@ class Memora:
         if not selected_memories_ids: # The LLM misbehaved not extracting any ids or << NONE >>.
             return None
         
-        return [str(selection).strip() for selection in selected_memories_ids if str(selection).strip().lower() != "none"]
+        # The LLM is undeterministic and can select the same memory_ids multiple times.
+        return set([str(selection).strip() for selection in selected_memories_ids if str(selection).strip().lower() != "none"])
 
-    async def search_memories_as_one(self, org_id: str, user_id: str, search_queries: List[str], agent_id: Optional[str] = None, memories_across_agents: bool = True) -> List[Dict[str, str]]:
+    async def search_memories_as_one(self, org_id: str, user_id: str, search_queries: List[str], filter_out_memory_ids_set: Set[str] = set(), agent_id: Optional[str] = None, memories_across_agents: bool = True) -> List[Dict[str, str]]:
         """
         Retrieve memories corresponding to the search queries for a message.
 
@@ -152,6 +153,7 @@ class Memora:
             org_id (str): Organization ID.
             user_id (str): User ID.
             search_queries (List[str]): List of search queries.
+            filter_out_memory_ids_set (Optional[Set[str]]): Set of memory IDs to filter out.
             agent_id (Optional[str]): Agent ID.
             memories_across_agents (bool): Whether to search memories across all agents.
 
@@ -166,22 +168,27 @@ class Memora:
             agent_id=agent_id if not memories_across_agents else None
         )
 
-        print(batch_results)
-
-        memory_ids = [memory['memory_id'] for result in batch_results for memory in result]
+        # Extract memory IDs from the batch results and filter out the ones to be excluded. 
+        memory_ids = [
+            memory['memory_id']
+            for result in batch_results
+            for memory in result
+            if memory['memory_id'] not in filter_out_memory_ids_set
+        ]
 
         if not memory_ids:
             return []
         
         return await self.graph.fetch_user_memories_resolved(org_id, user_id, memory_ids)
     
-    async def search_memories_as_batch(self, org_id: str, search_queries: List[str], user_id: Optional[str] = None, agent_id: Optional[str] = None, memory_search_scope: MemorySearchScope = MemorySearchScope.USER, memories_across_agents: bool = True) -> List[List[Dict[str, str]]]:
+    async def search_memories_as_batch(self, org_id: str, search_queries: List[str], filter_out_memory_ids_set: Set[str] = set(), user_id: Optional[str] = None, agent_id: Optional[str] = None, memory_search_scope: MemorySearchScope = MemorySearchScope.USER, memories_across_agents: bool = True) -> List[List[Dict[str, str]]]:
         """
         Retrieve memories corresponding to a list of search queries.
 
         Args:
             org_id (str): Organization ID.
             search_queries (List[str]): List of search queries.
+            filter_out_memory_ids_set (Optional[Set[str]]): Set of memory IDs to filter out.
             user_id (Optional[str]): User ID.
             agent_id (Optional[str]): Agent ID.
             memory_search_scope (MemorySearchScope): Scope of memory search.
@@ -198,9 +205,14 @@ class Memora:
             agent_id=agent_id if not memories_across_agents else None
         )
 
-        print(batch_results)
-
-        batch_memory_ids = [[memory['memory_id'] for memory in result] for result in batch_results]
+        batch_memory_ids = [
+            [
+                memory['memory_id'] 
+                for memory in result 
+                if memory['memory_id'] not in filter_out_memory_ids_set
+            ] 
+            for result in batch_results
+        ]
 
         if not any(batch_memory_ids):
             return []
@@ -452,8 +464,9 @@ class Memora:
         user_id: str,  
         latest_msg: str, 
         agent_id: Optional[str] = None,
-        preceding_msg_for_context: Optional[List[Dict[str, str]]] = [], 
+        preceding_msg_for_context: List[Dict[str, str]] = [], 
         current_datetime: datetime = datetime.now(),
+        filter_out_memory_ids_set: Set[str] = set(),
         search_memories_across_agents: bool = True,
         enable_final_model_based_memory_filter: bool = True,
     ) -> Optional[List[Dict[str, str]]]:
@@ -465,8 +478,9 @@ class Memora:
             user_id (str): User ID.
             latest_msg (str): The latest message from user to find memories for.
             agent_id (Optional[str]): Agent ID.
-            preceding_msg_for_context (Optional[List[Dict[str, str]]]): Preceding messages for context.
+            preceding_msg_for_context (List[Dict[str, str]]): Preceding messages for context.
             current_datetime (datetime): Current datetime.
+            filter_out_memory_ids_set (Set[str]): Set of memory IDs to filter out.
             search_memories_across_agents (bool): Whether to search memories across all agents.
             enable_final_model_based_memory_filter (bool): Whether to use the memory model to filter retrieved memories before returning.
 
@@ -475,13 +489,17 @@ class Memora:
         """
 
         memory_search_queries = await self.generate_memory_search_queries(latest_msg, preceding_msg_for_context, current_datetime)
+        print(memory_search_queries)
         
         if not memory_search_queries:
             return None
         
         retrieved_memories = await self.search_memories_as_one(
-            org_id, user_id, memory_search_queries, agent_id, search_memories_across_agents
+            org_id, user_id, memory_search_queries, filter_out_memory_ids_set, agent_id, search_memories_across_agents
         )
+
+        print("Retrieved Memories: ")
+        print(retrieved_memories)
         
         if not enable_final_model_based_memory_filter:
             return retrieved_memories

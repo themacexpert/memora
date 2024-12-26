@@ -203,13 +203,13 @@ class QdrantDB(BaseVectorDB):
                         models.Prefetch(
                             query=models.SparseVector(indices=sparse.indices, values=sparse.values),
                             using=self.client.get_sparse_vector_field_name(),
-                            limit=10
+                            limit=12
                         ),
                         models.Prefetch(
                             query=dense,
                             using=self.client.get_vector_field_name(),
-                            score_threshold=0.35,
-                            limit=10
+                            score_threshold=0.4,
+                            limit=12
                         )
                     ],
 

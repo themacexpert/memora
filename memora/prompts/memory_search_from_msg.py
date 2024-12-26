@@ -6,7 +6,7 @@ Input:
 - Previous conversation messages (if provided, and is useful for context)
 
 Instructions:
-1. Generate at least 2 search queries to retrieve relevant memories for responding
+1. Generate at least 3 search queries to retrieve relevant memories for (the message, entities, relationships, patterns etc.)
 2. Focus only on memory needs for the latest message
 3. No explanations or responses - just search queries
 
