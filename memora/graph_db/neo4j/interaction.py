@@ -358,7 +358,7 @@ class Neo4jInteraction(BaseGraphDB):
                     interaction_id: $interaction_id
                     })-[r:FIRST_MESSAGE|IS_NEXT*]->(message:MessageBlock)
 
-                OPTIONAL MATCH (interaction)<-[:MESSAGE_SOURCE]-(memory)
+                OPTIONAL MATCH (interaction)<-[:INTERACTION_SOURCE]-(memory)
                 OPTIONAL MATCH (interaction)-[:HAS_OCCURRENCE_ON]->(date:Date) WHERE NOT (date)<-[:HAS_OCCURRENCE_ON]-()
 
                 DETACH DELETE interaction, message, memory, date
