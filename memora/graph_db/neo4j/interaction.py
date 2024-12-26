@@ -362,7 +362,7 @@ class Neo4jInteraction(BaseGraphDB):
                 OPTIONAL MATCH (interaction)-[:HAS_OCCURRENCE_ON]->(date:Date) WHERE NOT (date)<-[:HAS_OCCURRENCE_ON]-()
 
                 DETACH DELETE interaction, message, memory, date
-            """)
+            """, org_id=org_id, user_id=user_id, interaction_id=interaction_id)
 
             # Delete memories from vector DB.
             await vector_db_delete_memories_by_id_fn(interaction_memories_ids)
