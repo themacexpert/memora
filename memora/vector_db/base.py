@@ -16,7 +16,7 @@ class BaseVectorDB(ABC):
     """
 
     @abstractmethod
-    async def close(self):
+    async def close(self) -> None:
         """Closes the database connection."""
         pass
 
@@ -34,15 +34,16 @@ class BaseVectorDB(ABC):
                         memories: List[str],
                         obtained_at: str
                         ) -> None:
-        """Add memories to collection with their org_id, user_id, agent_id, and obtained_at datetime as metadata.
+        """
+        Add memories to collection with their org_id, user_id, agent_id, and obtained_at datetime as metadata.
         
         Args:
-            org_id: Organization ID for the memories
-            user_id: User ID for the memories
-            agent_id: Agent ID for the memories
-            memory_ids: List of UUIDs for each memory
-            memories: List of memory strings to add
-            obtained_at: ISO format datetime string when the memories were obtained
+            org_id (str): Organization ID for the memories
+            user_id (str): User ID for the memories
+            agent_id (str): Agent ID for the memories
+            memory_ids (List[uuid.UUID]): List of UUIDs for each memory
+            memories (List[str]): List of memory strings to add
+            obtained_at (str): ISO format datetime string when the memories were obtained
             
         Raises:
             ValueError: If the lengths of memory_ids and memories don't match
@@ -57,17 +58,25 @@ class BaseVectorDB(ABC):
                          user_id: Optional[str] = None,
                          agent_id: Optional[str] = None,
                          ) -> List[Dict[str, Any]]:
-        """Memory search with optional org/user filtering.
+        """
+        Memory search with optional user/agent filtering.
         
         Args:
-            query: Search query string
-            memory_search_scope: Memory search scope (organization or user)
-            org_id: Organization ID for filtering
-            user_id: Optional user ID for filtering
-            agent_id: Optional agent ID for filtering
+            query (str): Search query string
+            memory_search_scope (MemorySearchScope): Memory search scope (organization or user)
+            org_id (str): Organization ID for filtering
+            user_id (Optional[str]): Optional user ID for filtering
+            agent_id (Optional[str]): Optional agent ID for filtering
             
         Returns:
-            List of Dicts containing search results with at least 'memory', 'score', 'memory_id', and 'obtained_at' keys
+            List[Dict[str, Any]] containing search results with at least:
+
+                + memory: str
+                + score: float
+                + memory_id: str
+                + org_id: str
+                + user_id: str
+                + obtained_at: Iso format timestamp
         """
         pass
 
@@ -79,53 +88,65 @@ class BaseVectorDB(ABC):
                           user_id: Optional[str] = None,
                           agent_id: Optional[str] = None,
                           ) -> List[List[Dict[str, Any]]]:
-        """Batch memory search with optional org/user filtering.
+        """
+        Batch memory search with optional user/agent filtering.
         
         Args:
-            queries: List of search query strings
-            memory_search_scope: Memory search scope (organization or user)
-            org_id: Organization ID for filtering
-            user_id: Optional user ID for filtering
-            agent_id: Optional agent ID for filtering
+            queries (List[str]): List of search query strings
+            memory_search_scope (MemorySearchScope): Memory search scope (organization or user)
+            org_id (str): Organization ID for filtering
+            user_id (Optional[str]): Optional user ID for filtering
+            agent_id (Optional[str]): Optional agent ID for filtering
             
         Returns:
-            List of search results for each query, where each result is a list of dictionaries. Each dictionary contains at least 'memory', 'score', 'memory_id', and 'obtained_at' keys.
+            List[List[Dict[str, Any]]] of search results for each query, where each dictionary contains at least:
+                
+                + memory: str
+                + score: float
+                + memory_id: str
+                + org_id: str
+                + user_id: str
+                + obtained_at: Iso format timestamp
         """
         pass
 
     @abstractmethod
     async def delete_memory(self, memory_id: str) -> None:
-        """Delete a memory by its ID with optional org/user filtering.
+        """
+        Delete a memory by its ID with optional org/user filtering.
         
         Args:
-            memory_id: ID of the memory to delete
+            memory_id (str): ID of the memory to delete
         """
         pass
 
     @abstractmethod
     async def delete_memories(self, memory_ids: List[str]) -> None:
-        """Delete multiple memories by their IDs.
+        """
+        Delete multiple memories by their IDs.
         
         Args:
-            memory_ids: List of memory IDs to delete
+            memory_ids (List[str]): List of memory IDs to delete
         """
         pass
 
     @abstractmethod
     async def delete_all_user_memories(self, org_id: str, user_id: str) -> None:
-        """Delete all memories associated with a specific user.
+        """
+        Delete all memories associated with a specific user.
         
         Args:
-            org_id: Organization ID the user belongs to
-            user_id: ID of the user whose memories should be deleted
+            org_id (str): Organization ID the user belongs to
+            user_id (str): ID of the user whose memories should be deleted
         """
         pass
 
     @abstractmethod
     async def delete_all_organization_memories(self, org_id: str) -> None:
-        """Delete all memories associated with an organization.
+        """
+        Delete all memories associated with an organization.
         
         Args:
-            org_id: ID of the organization whose memories should be deleted
+            org_id (str): ID of the organization whose memories should be deleted
         """
         pass

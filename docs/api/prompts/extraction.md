@@ -1,4 +1,7 @@
-MEMORY_EXTRACTION_SYSTEM_PROMPT = """
+# **All `Prompts` and `Input Templates` Used for Extraction**
+
+**`MEMORY_EXTRACTION_SYSTEM_PROMPT`**
+```
 The Current Date & Time is {day_of_week}, {current_datetime_str}.
 Given an interaction between ({agent_label}) and ({user_name}).
 
@@ -16,16 +19,19 @@ Given an interaction between ({agent_label}) and ({user_name}).
 
 
 >>>>>>> ENTIRE INTERACTION IS BELOW <<<<<<<
-"""
+```
 
-EXTRACTION_MSG_BLOCK_FORMAT = """
+
+**`EXTRACTION_MSG_BLOCK_FORMAT`**
+```
 # MESSAGE BLOCK ID: {message_id}
 -------------
 {content}
-"""
+```
 
 
-MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT = """ 
+**`MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT`**
+```
 The Current Date & Time is {day_of_week}, {current_datetime_str}. 
 Given an interaction between ({agent_label}) and ({user_name}). 
 
@@ -47,9 +53,11 @@ Given an interaction between ({agent_label}) and ({user_name}).
 {previous_memories}
 
 >>>>>>> ENTIRE INTERACTION IS BELOW <<<<<<< 
-"""
+```
 
-COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT = """
+
+**`COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT`**
+```
 The Current Date & Time is {day_of_week}, {current_datetime_str}.
 
 You manage memories for {user_placeholder} / {agent_placeholder}.  
@@ -67,9 +75,11 @@ You are given existing stored memories and candidate new memories.
 - DO NOT GIVE ANY EXPLANATIONS.
 - The Output JSON object must use the schema: {schema}
 
-"""
+```
 
-COMPARE_EXISTING_AND_NEW_MEMORIES_INPUT_TEMPLATE = """
+
+**`COMPARE_EXISTING_AND_NEW_MEMORIES_INPUT_TEMPLATE`**
+```
 ====
 EXISTING MEMORIES 
 ====
@@ -82,4 +92,4 @@ NEW CANDIDATE MEMORIES
 
 {new_memories_string}
 
-"""
+```

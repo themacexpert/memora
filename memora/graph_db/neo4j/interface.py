@@ -11,11 +11,28 @@ from .memory import Neo4jMemory
 
 class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInteraction, Neo4jMemory):
 
-    def __init__(self,
-                 uri: str = os.getenv("NEO4J_URI"),
-                 username: str = os.getenv("NEO4J_USERNAME"),
-                 password: str = os.getenv("NEO4J_PASSWORD"),
-                 database: str = os.getenv("NEO4J_DATABASE")):
+    def __init__(self, uri: str, username: str, password: str, database: str):
+        """
+        A unified interface for interacting with the Neo4j graph database.
+
+        Args:
+            uri (str): The URI of the Neo4j database.
+            username (str): The username for authentication.
+            password (str): The password for authentication.
+            database (str): The name of the Neo4j database.
+
+        Example:
+            ```python
+            from memora.graph_db.neo4j import Neo4jGraphInterface
+
+            neo4j_interface = Neo4jGraphInterface(
+                uri="Neo4jURI",
+                username="Neo4jUsername",
+                password="Neo4jPassword",
+                database="Neo4jDatabaseName",
+            )
+            ```
+        """
 
         self.driver = AsyncGraphDatabase.driver(uri=uri, auth=(username, password))
         self.database = database

@@ -10,6 +10,20 @@ class Neo4jOrganization(BaseGraphDB):
 
     @override
     async def create_organization(self, org_name: str) -> Dict[str, str]:
+        """
+        Creates a new organization in the Neo4j graph database.
+        
+        Args:
+            org_name (str): The name of the organization to create.
+
+        Returns:
+            Dict[str, str] containing:
+
+                + org_id: Short UUID string
+                + org_name: Organization name
+                + created_at: ISO format timestamp
+        """
+
         org_id = shortuuid.uuid()
         
         async def create_org_tx(tx):
@@ -32,6 +46,20 @@ class Neo4jOrganization(BaseGraphDB):
 
     @override
     async def update_organization(self, org_id: str, new_org_name: str) -> Dict[str, str]:
+        """
+        Updates an existing organization in the Neo4j graph database.
+        
+        Args:
+            org_id (str): The Short UUID of the organization to update.
+            new_org_name (str): The new name for the organization.
+
+        Returns:
+            Dict[str, str] containing:
+            
+                + org_id: Short UUID string
+                + org_name: Organization name
+        """
+
         async def update_org_tx(tx):
             result = await tx.run("""
                 MATCH (o:Org {org_id: $org_id})
@@ -49,6 +77,15 @@ class Neo4jOrganization(BaseGraphDB):
     
     @override
     async def delete_organization(self, org_id: str) -> None:
+        """
+        Deletes an organization from the Neo4j graph database.
+
+        ⚠️ DANGER: This operation will delete all nodes and relationships from this organization
+        including users, agents, memories, interactions etc.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization to delete.
+        """
 
         async def delete_org_tx(tx):
             # Delete all nodes and relationships associated with the org
@@ -66,6 +103,19 @@ class Neo4jOrganization(BaseGraphDB):
 
     @override
     async def get_organization(self, org_id: str) -> Dict[str, str]:
+        """
+        Gets a specific organization from the Neo4j graph database.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization to retrieve.
+
+        Returns:
+            Dict[str, str] containing:
+            
+                + org_id: Short UUID string
+                + org_name: Organization name
+                + created_at: ISO format timestamp
+        """
         
         async def get_org_tx(tx):
             result = await tx.run("""

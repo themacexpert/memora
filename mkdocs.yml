@@ -1,0 +1,125 @@
+repo_url: https://github.com/ELZAI/memora/
+site_author: Jonathan Okorie
+
+site_name: Memora
+site_description: A Human Memory Agent For AI
+site_url: https://elzai.com/memora/docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: white
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+        
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+  features:
+    - search.suggest
+    - search.highlight
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+plugins:
+  - search
+  - exclude-search:
+      exclude:
+        - api/prompts/*
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_root_heading: true
+            show_category_heading: true
+            heading_level: 2
+            docstring_style: google
+            show_signature_annotations: true
+            separate_signature: true
+            show_symbol_type_heading: true
+            docstring_section_style: spacy
+            show_if_no_docstring: true
+            docstring_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
+
+watch:
+  - memora
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - def_list
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - Advanced Usage: advanced_usage.md
+
+  - API Reference:
+    - Overview: api/index.md
+
+    - Agent:
+      - Memora: api/agent/memora.md
+
+    - Graph Database:
+      - BaseGraphDB: api/graph_db/base.md
+      - Neo4j: api/graph_db/neo4j.md
+
+    - Vector Database:
+      - BaseVectorDB: api/vector_db/base.md
+      - MemorySearchScope: api/vector_db/memory_search_scope.md
+      - Qdrant: api/vector_db/qdrant.md
+
+    - LLM Backend:
+      - BaseBackendLLM: api/llm_backends/base.md
+      - Azure OpenAI: api/llm_backends/azure_openai.md
+      - Groq: api/llm_backends/groq.md
+      - OpenAI: api/llm_backends/openai.md
+      - Together: api/llm_backends/together.md
+
+    - Schema:
+      - Memory Extraction: api/schema/extraction.md
+      - Memory Storage: api/schema/storage.md
+
+    - Prompts:
+      - Extraction: api/prompts/extraction.md
+      - Search: api/prompts/search.md
+      - Filter: api/prompts/filter.md

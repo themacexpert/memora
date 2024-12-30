@@ -1,4 +1,7 @@
-MSG_MEMORY_SEARCH_PROMPT ="""
+# **All `Prompts` and `Input Templates` Used for Search**
+
+**`MSG_MEMORY_SEARCH_PROMPT`**
+```
 You are a memory agent. Your task is to generate memory search queries based on the latest message to the room.
 
 Input:
@@ -20,9 +23,10 @@ Random Example (JUST EXAMPLE DO NOT USE ANY INFO HERE):
     << Ava vacation in San Francisco with Sarah >>
     << Ava and Sarah's visit to the Golden Gate Bridge >>
     << Sarah planning a trip with John >>
-"""
+```
 
-MSG_MEMORY_SEARCH_TEMPLATE = """
+**`MSG_MEMORY_SEARCH_TEMPLATE`**
+```
 # Preceding Messages
 ---
 {preceding_messages}
@@ -32,4 +36,4 @@ MSG_MEMORY_SEARCH_TEMPLATE = """
 ---
 {message_of_user}
 ---
-""" 
+```

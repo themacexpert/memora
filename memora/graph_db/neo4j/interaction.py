@@ -113,6 +113,7 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
     async def _link_update_contrary_memories_to_existing_memories(self, tx, org_id: str, user_id: str, new_contrary_memory_ids: List[str], memories_and_interaction: MemoriesAndInteraction):
+        """Link the new contary memories as updates to the old memory they contradicted."""
 
         await tx.run("""
                 UNWIND $contrary_and_existing_ids as contrary_and_existing_id_tuple
@@ -138,6 +139,23 @@ class Neo4jInteraction(BaseGraphDB):
         memories_and_interaction: MemoriesAndInteraction,
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
     ) -> Tuple[str, str]:
+        """
+        Creates a new interaction record with associated memories.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            agent_id (str): Short UUID string identifying the agent.
+            user_id (str): Short UUID string identifying the user.
+            memories_and_interaction (MemoriesAndInteraction): Contains both the interaction and the associated memories.
+            vector_db_add_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.add_memories`),
+                called in the graph transaction block to ensure data consistency.
+        
+        Returns:
+            Tuple[str, str] containing:
+
+                + interaction_id: Short UUID string identifying the created interaction
+                + created_at: ISO format timestamp of when the interaction was created
+        """
         
         interaction_id = shortuuid.uuid()
         new_memory_ids = [str(uuid.uuid4()) for _ in range(len(memories_and_interaction.memories))]
@@ -205,6 +223,32 @@ class Neo4jInteraction(BaseGraphDB):
         updated_memories_and_interaction: MemoriesAndInteraction,
         vector_db_add_memories_fn: Callable[..., Awaitable[None]]
     ) -> Tuple[str, str]:
+        """
+        Update an existing interaction record and add new memories.
+        
+        Compares updated interaction with existing one:
+            - If differences are found, truncates existing record from that point and
+            replaces with updated version. Old memories from truncated message(s)
+            remain but become standalone (no longer linked to truncated messages).
+            - If no differences, appends new messages from the update.
+        
+        New memories are always added, regardless of interaction changes.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            agent_id (str): Short UUID string identifying the agent in the updated interaction.
+            user_id (str): Short UUID string identifying the user.
+            interaction_id (str): Short UUID string identifying the interaction to update.
+            updated_memories_and_interaction (MemoriesAndInteraction): Contains both the updated interaction and the associated new memories.
+            vector_db_add_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.add_memories`),
+                called in the graph transaction block to ensure data consistency.
+
+        Returns:
+            Tuple[str, str] containing:
+
+                + interaction_id: Short UUID string identifying the updated interaction
+                + updated_at: ISO format timestamp of when the update occurred
+        """
 
         new_memory_ids = [str(uuid.uuid4()) for _ in range(len(updated_memories_and_interaction.memories))]
         new_contrary_memory_ids = [str(uuid.uuid4()) for _ in range(len(updated_memories_and_interaction.contrary_memories))]
@@ -293,6 +337,21 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         interaction_id: str
     ) -> List[Dict[str, str]]:
+        """
+        Retrieves all messages associated with a specific interaction.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            user_id (str): Short UUID string identifying the user.
+            interaction_id (str): Short UUID string identifying the interaction.
+            
+        Returns:
+            List[Dict[str, str]], each containing message details:
+
+                + role: Role of the message sender (user or agent)
+                + content: String content of the message
+                + msg_position: Position of the message in the interaction
+        """
 
         async def get_messages_tx(tx):
 
@@ -320,6 +379,21 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         interaction_id: str
     ) -> List[Dict[str, str]]:
+        """
+        Retrieves all memories associated with a specific interaction.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            user_id (str): Short UUID string identifying the user.
+            interaction_id (str): Short UUID string identifying the interaction.
+            
+        Returns:
+            List[Dict[str, str]], each containing memory details:
+
+                + memory_id: UUID string identifying the memory
+                + memory: String content of the memory
+                + obtained_at: ISO format timestamp of when the memory was obtained
+        """
         
         async def get_memories_tx(tx):
             result = await tx.run("""
@@ -345,6 +419,16 @@ class Neo4jInteraction(BaseGraphDB):
         interaction_id: str,
         vector_db_delete_memories_by_id_fn: Callable[..., Awaitable[None]]
     ) -> None:
+        """
+        Deletes an interaction record and its associated memories.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            user_id (str): Short UUID string identifying the user.
+            interaction_id (str): Short UUID string identifying the interaction to delete.
+            vector_db_delete_memories_by_id_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_memories`),
+                called in the graph transaction block to ensure data consistency.
+        """
 
         interaction_memories = await self.get_all_interaction_memories(org_id, user_id, interaction_id)
         interaction_memories_ids = [memory["memory_id"] for memory in interaction_memories]
@@ -377,6 +461,15 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]]
     ) -> None:
+        """
+        Deletes all interactions and their associated memories for a specific user in an organization.
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization
+            user_id (str): Short UUID string identifying the user whose interactions should be deleted
+            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`), 
+                called in the graph transaction block to ensure data consistency.
+        """
         
         async def delete_all_tx(tx):
             await tx.run("""

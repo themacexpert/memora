@@ -1,15 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
-EXTRACTION_MSG_BLOCK_FORMAT = """
-# MESSAGE BLOCK ID: {message_id}
--------------
-{content}
-"""
-
-
-
-
 class ExtractedMemory(BaseModel):
     memory: str = Field(description="The memory, max 25 words, self-contained, remember use of #user_#id# or #agent_#id#.")
     msg_source_ids: list[int] = Field(description="List with id or ids indicating which message blocks this memory was extracted from.")
