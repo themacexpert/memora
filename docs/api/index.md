@@ -1,6 +1,6 @@
 # API Reference
 
-> :information_source: This is the API Reference. For most users, the [Getting Started](getting_started.md) or [Advanced Usage](advanced_usage.md) guides are the go-to resources for effectively using the library. However, if you need a deeper understanding of Memora's components, you're in the right place.
+> :information_source: This is the API Reference. For most users, the [Getting Started](../getting_started.md) or [Advanced Usage](../advanced_usage.md) guides are the go-to resources for effectively using the library. However, if you need a deeper understanding of Memora's components, you're in the right place.
 
 ## Components
 

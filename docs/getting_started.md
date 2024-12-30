@@ -167,7 +167,7 @@ batch_memories = await memora.search_memories_as_batch(
 ### **4. Recall Memories for a User's Message in Interaction**
 
 ```python
-recalled_memories = await memora.get_memories_for_message(
+recalled_memories, memory_ids = await memora.recall_memories_for_message(
     org_id,
     user_id,
     latest_msg="Sarah is really in pain more nowdays, so both of us can't sleep.",
@@ -177,7 +177,9 @@ recalled_memories = await memora.get_memories_for_message(
     filter_out_memory_ids_set={'4b9df118-fa11-4e29-abfd-3b02587aa251'}  
 )
 
-# recalled_memories: [{"memory_id": "uuid string", "memory": "Jake's wife Sarah is due on December 15th", "obtained_at": "iso timestamp"}, {"memory_id": "uuid string", "memory": "Jake and Sarah are pretty confident the baby’s a girl but will confirm at the next ultrasound.", "obtained_at": "iso timestamp"}, ...]
+# recalled_memories: [{"memory": "Jake's wife Sarah is due on December 15th", "obtained_at": "iso timestamp"}, {"memory": "Jake and Sarah are pretty confident the baby’s a girl but will confirm at the next ultrasound.", "obtained_at": "iso timestamp"}, ...]
+
+# memory_ids: ["uuid string", "uuid string", ...]
 ```
 
 
@@ -200,105 +202,140 @@ await memora.graph.delete_user_memory(org_id, user_id, "memory_uuid")
 !!! note
     For more methods, see the `API Reference` page on your desired GraphDB implementation. (Just [Neo4j](api/graph_db/neo4j.md) for now.)
 
+
+
 ## **Building a Sample Personal Assistant with Memory**
 
-Here's a complete example of a personal assistant that effectively uses Memora's memory system:
+Here's a sample example of a personal assistant that using Memora:
+
+!!! note
+    This sample assumes that Setup which is required on the very first run only (creates indexes and constraints) as already been called.
+
+    ```python
+    from qdrant_client import AsyncQdrantClient
+    from memora.vector_db import QdrantDB
+    from memora.graph_db import Neo4jGraphInterface
+
+    vector_db = QdrantDB(async_client=AsyncQdrantClient(url="QDRANT_URL", api_key="QDRANT_API_KEY"))
+    graph_db = Neo4jGraphInterface(uri="Neo4jURI", username="Username", password="Password", database="DBName")
+
+    await vector_db.setup()
+    await graph_db.setup()
+    ```
 
 ```python
-class PersonalAssistant:
-    def __init__(self, memora: Memora):
-        self.memora = memora
-        self.conversation_memory_ids = set()  # Track retrieved memory IDs
-        
-    async def chat(self, user_message: str, org_id: str, user_id: str, agent_id: str):
-        # 1. Search for relevant memories
-        memories = await self.memora.search_memories(
-            org_id=org_id,
-            user_id=user_id,
-            query=user_message,
-            exclude_memory_ids=list(self.conversation_memory_ids)  # Exclude already used memories
-        )
-        
-        # 2. Track the memory IDs we're using in this conversation
-        for memory in memories:
-            self.conversation_memory_ids.add(memory['memory_id'])
-        
-        # 3. Format memories for context
-        memory_context = "\n".join([f"- {m['memory']}" for m in memories])
-        
-        # 4. Generate response (using your preferred method)
-        system_prompt = f"""You are a helpful personal assistant. Use the following memories about the user to provide personalized responses:
-        
-        User Memories:
-        {memory_context}
-        
-        Instructions:
-        - Use the memories naturally in conversation
-        - Don't explicitly mention that you're using memories
-        - Be conversational and friendly
-        """
-        
-        # Your response generation logic here
-        # For example, using the extraction_model:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ]
-        response = await self.memora.extraction_model.chat_completion(messages)
-        assistant_message = response.choices[0].message.content
-        
-        # 5. Save the interaction and extract new memories
-        conversation = [
-            {"role": "user", "content": user_message},
-            {"role": "assistant", "content": assistant_message}
-        ]
-        
-        await self.memora.save_or_update_interaction_and_memories(
-            org_id=org_id,
-            user_id=user_id,
-            agent_id=agent_id,
-            interaction=conversation
-        )
-        
-        return assistant_message
+from typing import *
+from groq import AsyncGroq
+from qdrant_client import AsyncQdrantClient
+from memora.vector_db import QdrantDB
+from memora.graph_db import Neo4jGraphInterface
+from memora.llm_backends import GroqBackendLLM
 
-# Usage Example
-async def main():
-    # Initialize Memora as shown in Basic Setup
-    assistant = PersonalAssistant(memora)
-    
-    # Example conversation
-    responses = []
-    messages = [
-        "Hi! I'm new here.",
-        "What kind of outdoor activities do you recommend?",
-        "Tell me more about hiking in Banff.",
-        "What other activities can I do there?"
-    ]
-    
-    for message in messages:
-        response = await assistant.chat(
-            message,
-            org_id=org_id,
-            user_id=user_id,
-            agent_id=agent_id
+class PersonalAssistant:
+    def __init__(self, org_id: str, user_id: str, system_prompt: str):
+
+        self.org_id = org_id
+        self.user_id = user_id
+        
+        # Initialize databases
+        vector_db = QdrantDB(async_client=AsyncQdrantClient(url="QDRANT_URL", api_key="QDRANT_API_KEY"))
+        graph_db = Neo4jGraphInterface(
+            uri="NEO4J_URI",
+            username="NEO4J_USERNAME", password="NEO4J_PASSWORD",
+            database="NEO4J_DATABASE"
         )
-        responses.append(response)
+
+        # Initialize memora
+        self.memora = Memora(
+            vector_db=vector_db, graph_db=graph_db,
+            memory_search_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.1-8b-instant"),
+            extraction_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.3-70b-specdec", max_tokens=8000),
+        )
+
+        # We recommend using your LLM provider implementation for the chat model. This allows you to utilize features like streaming and tools. 
+        # The backend LLMs are tailored for Memora's needs (non-stream, structured output).
+        self.chat_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+
+        # Track conversation history: clean version for saving and as preceding message context in memory search.
+        self.base_history = [{"role": "system", "content": system_prompt}]
+
+        # Version with memory recalls for prompting
+        self.prompt_history = self.base_history.copy()
+        # Track retrieved memory IDs already in the prompt history (```memory recall ...````), so they are not retrieved again.
+        self.already_recalled_memory_ids: Set[str] = set()
+
+    async def chat(self, user_message: str) -> str:
+        
+        recalled_memories, recalled_memory_ids = await self.memora.recall_memories_for_message(
+            self.org_id, self.user_id,
+            user_message, preceding_msg_for_context=self.base_history,
+            filter_out_memory_ids_set=self.already_recalled_memory_ids
+        )
+
+        # Format message with memories
+        formatted_msg = """
+            ```memory recall
+            - {memories}
+            ```
+            message: {message}
+        """.format(
+            memories="\n".join(f"- {str(memory)}" for memory in recalled_memories) if recalled_memories else "None recalled.",
+            message=user_message
+        )
+
+        # Get model response
+        response = await self.chat_client.chat.completions.create(
+            messages=self.prompt_history + [{"role": "user", "content": formatted_msg}],
+            model="llama-3.3-70b-specdec",
+            temperature=1,
+            stream=False
+        )
+        assistant_reply = response.choices[0].message.content
+
+        # Update conversation histories
+        self.base_history.extend([{"role": "user", "content": user_message}, {"role": "assistant", "content": assistant_reply}])
+        
+        # Note: This version uses the formatted_msg containing memory recalls.
+        self.prompt_history.extend([{"role": "user", "content": formatted_msg}, {"role": "assistant", "content": assistant_reply}])
+        
+        self.already_recalled_memory_ids.update(recalled_memory_ids or [])
+        
+        return assistant_reply
+
+    async def save_interaction(self) -> Tuple[str, str]:
+        interaction_id, created_at = await self.memora.save_or_update_interaction_and_memories(
+            self.org_id, self.user_id, 
+            interaction=self.base_history # Always use the base_history for saving / updating.
+        )
+        return interaction_id, created_at
+
+
+async def main():
+    assistant = PersonalAssistant(
+        org_id, user_id, 
+        "You are jake's assistant, with a memory agent that provides memories recalled for jake's message ```memory recall ...```."
+    )
+
+    while True:
+        msg = input(">>> Jake: ")
+        if msg == "quit()":
+            break
+        print(f">>> Assistant: {await assistant.chat(msg)}")
+
+    interaction_id, created_at = await assistant.save_interaction()
+    print(f"Interaction saved with ID: {interaction_id} and created at: {created_at}")
 ```
 
-???+ note "Why Track Memory IDs?"
+???+ note "Why Track Two histories?"
 
-    The `conversation_memory_ids` set in the PersonalAssistant class serves several important purposes:
+    We need two versions:
 
-    1. **Prevents Repetition**: By excluding previously used memories, the assistant won't repeat the same information multiple times in a conversation.
+    1. **Base Version**: Contains only the user message and the assistant's reply.
+    2. **Prompted Version**: Includes the recalled memories along with the user message and the assistant's reply. This version is used for prompting.
 
-    2. **Conversation Flow**: Ensures the conversation progresses naturally by prioritizing new, relevant memories over ones already discussed.
+    The recalled memories are kept in the prompted version for many reasons one being so later in the same interaction if the user asks why the AI provided a particular reply, the AI can reference the memories listed under `memory recall` above that user message.
 
-    3. **Context Management**: Helps maintain a coherent conversation by bringing in fresh context when needed while avoiding redundant information.
-
-    4. **Memory Efficiency**: Reduces unnecessary processing by not re-retrieving and re-analyzing the same memories.
-
-    For example, if the user mentions hiking, the first search might return memories about their favorite trails. In subsequent messages, by excluding these already-used memories, the system might surface other relevant but previously unmentioned memories, like their preferred hiking seasons or equipment preferences.
+    When saving the interaction or using preceding messages for context in a memory search, we use the base version without the memory recalls. This is because for saving, we only need new memories from that interaction and when referencing preceding messages, we focus on what was previously said, so their memory recalls are not necessary.
 
 
 ## Advanced Usage

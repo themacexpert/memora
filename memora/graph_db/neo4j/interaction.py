@@ -452,7 +452,7 @@ class Neo4jInteraction(BaseGraphDB):
 
                     // Fetch the interaction messages in order.
                     MATCH (interaction:Interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(message)
-                    WITH interaction{.*}, COLLECT(message{.*}) as messages
+                    WITH interaction{.*, created_at: toString(interaction.created_at), updated_at: toString(interaction.updated_at)}, COLLECT(message{.*}) as messages
                     RETURN {interaction: interaction, messages: messages} as interaction_dict
                 """, org_id=org_id, user_id=user_id, skip=skip, limit=limit)
             else:
@@ -463,7 +463,7 @@ class Neo4jInteraction(BaseGraphDB):
                     ORDER BY interaction.updated_at DESC
                     SKIP $skip
                     LIMIT $limit
-                    RETURN {interaction: interaction{.*}, messages: []} as interaction_dict
+                    RETURN {interaction: interaction{.*, created_at: toString(interaction.created_at), updated_at: toString(interaction.updated_at)}, messages: []} as interaction_dict
                 """, org_id=org_id, user_id=user_id, skip=skip, limit=limit)
             
             records = await result.value("interaction_dict", [])
