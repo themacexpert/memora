@@ -195,11 +195,12 @@ history = await memora.graph.get_user_memory_history(org_id, user_id, "memory_uu
 
 # Delete a specific memory
 await memora.graph.delete_user_memory(org_id, user_id, "memory_uuid")
-
-# Note: For more methods, see the `API Reference` page.
 ```
 
-## Building a Sample Personal Assistant with Memory
+!!! note
+    For more methods, see the `API Reference` page on your desired GraphDB implementation. (Just [Neo4j](api/graph_db/neo4j.md) for now.)
+
+## **Building a Sample Personal Assistant with Memory**
 
 Here's a complete example of a personal assistant that effectively uses Memora's memory system:
 

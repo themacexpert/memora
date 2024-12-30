@@ -460,6 +460,36 @@ class BaseGraphDB(ABC):
         """
         pass
 
+    @abstract
+    async def get_all_user_interactions(
+        self,
+        org_id: str,
+        user_id: str,
+        with_their_messages: bool = True,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Dict[str, str]]:
+        """
+        Retrieves all interactions for a specific user in an organization.
+
+        Note:
+            Interaction are sorted in descending order by their updated at datetime. (So most recent interactions are first).
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            user_id (str): Short UUID string identifying the user.
+            with_their_messages (bool): Whether to include messages of the interactions.
+            skip (int): Number of interactions to skip. (Useful for pagination)
+            limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
+
+        Returns:
+            List[Dict[str, str]], each dict containing interaction details and messages (or [] if `with_their_messages` is False):
+
+                + interaction: Interaction Data like created_at, updated_at, interaction_id, ...
+                + messages: List of messages in order (each message is a dict with role, content, msg_position)
+        """
+        pass
+
     @abstractmethod
     async def delete_user_interaction_and_its_memories(
         self,

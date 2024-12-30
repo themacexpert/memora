@@ -412,6 +412,67 @@ class Neo4jInteraction(BaseGraphDB):
             return await session.execute_read(get_memories_tx)
 
     @override
+    async def get_all_user_interactions(
+        self,
+        org_id: str,
+        user_id: str,
+        with_their_messages: bool = True,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Dict[str, str]]:
+        """
+        Retrieves all interactions for a specific user in an organization.
+
+        Note:
+            Interaction are sorted in descending order by their updated at datetime. (So most recent interactions are first).
+        
+        Args:
+            org_id (str): Short UUID string identifying the organization.
+            user_id (str): Short UUID string identifying the user.
+            with_their_messages (bool): Whether to include messages of the interactions.
+            skip (int): Number of interactions to skip. (Useful for pagination)
+            limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
+
+        Returns:
+            List[Dict[str, str]], each dict containing interaction details and messages (or [] if `with_their_messages` is False):
+
+                + interaction: Interaction Data like created_at, updated_at, interaction_id, ...
+                + messages: List of messages in order (each message is a dict with role, content, msg_position)
+        """
+        
+        async def get_interactions_tx(tx):
+            if with_their_messages:
+                result = await tx.run("""
+                    // Fetch interactions ordered by most recent to oldest.
+                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
+                    WITH interaction
+                    ORDER BY interaction.updated_at DESC
+                    SKIP $skip
+                    LIMIT $limit
+
+                    // Fetch the interaction messages in order.
+                    MATCH (interaction:Interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(message)
+                    WITH interaction{.*}, COLLECT(message{.*}) as messages
+                    RETURN {interaction: interaction, messages: messages} as interaction_dict
+                """, org_id=org_id, user_id=user_id, skip=skip, limit=limit)
+            else:
+                result = await tx.run("""
+                    // Fetch interactions ordered by most recent to oldest.
+                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
+                    WITH interaction
+                    ORDER BY interaction.updated_at DESC
+                    SKIP $skip
+                    LIMIT $limit
+                    RETURN {interaction: interaction{.*}, messages: []} as interaction_dict
+                """, org_id=org_id, user_id=user_id, skip=skip, limit=limit)
+            
+            records = await result.value("interaction_dict", [])
+            return records
+
+        async with self.driver.session(database=self.database, default_access_mode=neo4j.READ_ACCESS) as session:
+            return await session.execute_read(get_interactions_tx)
+
+    @override
     async def delete_user_interaction_and_its_memories(
         self,
         org_id: str,

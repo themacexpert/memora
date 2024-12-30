@@ -1,4 +1,3 @@
-import os
 import neo4j
 from neo4j import AsyncGraphDatabase
 from typing_extensions import override
@@ -75,6 +74,12 @@ class Neo4jGraphInterface(Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInterac
             await tx.run("""
                 CREATE CONSTRAINT unique_user_interaction IF NOT EXISTS
                 FOR (i:Interaction) REQUIRE (i.org_id, i.user_id, i.interaction_id) IS NODE KEY
+            """)
+
+            # Index on interaction updated_at, useful for sorting interactions by most recent when retrieving.
+            await tx.run("""
+                CREATE INDEX interaction_updated_timestamp_index IF NOT EXISTS
+                FOR (i:Interaction) ON (i.updated_at);
             """)
 
             # Date node key
