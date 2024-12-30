@@ -539,7 +539,7 @@ class Memora:
         filter_out_memory_ids_set: Set[str] = set(),
         search_memories_across_agents: bool = True,
         enable_final_model_based_memory_filter: bool = False,
-    ) -> List[Dict[str, str]] | None:
+    ) -> Tuple[List[Dict[str, str]] | None, List[str]]:
         """
         Retrieve and filter memories relevant to the given message.
 
@@ -555,7 +555,15 @@ class Memora:
             enable_final_model_based_memory_filter (bool): 📝 Experimental feature; enables filtering of retrieved memories using a model. Note that a small model (~ 8B or lower) might not select some memories that are indirectly needed.
 
         Returns:
-            List[Dict[str, str]] | None: Retrieved and filtered memories, or None if no relevant memories found.
+           Tuple[List[Dict[str, str]] | None, List[str]]:  
+
+            + List[Dict[str, str]]: Containing Memories to be recalled (None if no relevant memories found):
+
+                  + memory_id (str): Memory ID
+                  + memory (str): Memory content
+                  + obtained_at (str): ISO format timestamp
+
+            + List[str]: Just the memory IDs (empty list [] if no memory was recalled).
         """
 
         self.logger.info(f"Getting memories for message from user {user_id} in org {org_id}")
@@ -587,12 +595,12 @@ class Memora:
 
         if not retrieved_memories:
             self.logger.info("No memories found for the message")
-            return None
+            return None, []
 
         self.logger.info(f"Retrieved {len(retrieved_memories)} memories")
         
         if not enable_final_model_based_memory_filter:
-            return retrieved_memories
+            return retrieved_memories, [memory["memory_id"] for memory in retrieved_memories]
 
         self.logger.info("Applying model-based memory filtering")
         filtered_memory_ids = await self.filter_retrieved_memories_with_model(
@@ -601,15 +609,15 @@ class Memora:
         
         if filtered_memory_ids is None: # The LLM was unable to filter just needed memories.
             self.logger.info("Model-based filtering failed")
-            return retrieved_memories
+            return retrieved_memories, [memory["memory_id"] for memory in retrieved_memories]
         
         if len(filtered_memory_ids) == 0: # The LLM filtered out all memories (deemed none are needed to be recalled).
             self.logger.info("Model-based filtering returned no memories")
-            return None
+            return None, []
 
         memory_dict = {memory["memory_id"]: memory for memory in retrieved_memories}
         selected_memories = [memoryObj for memory_id in filtered_memory_ids if (memoryObj := memory_dict.get(memory_id)) is not None]
         
         self.logger.info(f"Selected {len(selected_memories)} memories after model-based filtering")
-        return selected_memories
+        return selected_memories, filtered_memory_ids
 
