@@ -460,7 +460,7 @@ class BaseGraphDB(ABC):
         """
         pass
 
-    @abstract
+    @abstractmethod
     async def get_all_user_interactions(
         self,
         org_id: str,
