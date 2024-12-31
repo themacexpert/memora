@@ -87,11 +87,6 @@ agent_id = agent['agent_id'] # Short UUID e.g 'CcyKXxhi2skEcDpRzNZim7'
 
 ```
 
-!!! note "Important Note"
-    For organization, user, agent, and interaction IDs, we use `shortuuid.uuid()` to generate compact short UUIDs, a base57-encoded version of standard UUIDs. They are shorter but retain the same uniqueness.
-
-    For memory IDs, we use the standard UUIDs `uuid.uuid4()`, as these are supported as vector IDs for the vast majority of vector databases.
-
 ## **Core Operations**
 
 ### **1. Saving an Interaction and its Memories**
@@ -180,7 +175,7 @@ recalled_memories, memory_ids = await memora.recall_memories_for_message(
     latest_msg="Sarah is really in pain more nowdays, so both of us can't sleep.",
     # Optional: Add previous messages in the interaction for context.
     preceding_msg_for_context=[],
-    # Optional: Exclude previously recalled memories (e.g They are already in the conversation). See sample personal assistant below.
+    # Optional: Exclude previously recalled memories (e.g They are already in the conversation). See sample personal assistant in the documentation.
     filter_out_memory_ids_set={'4b9df118-fa11-4e29-abfd-3b02587aa251'}  
 )
 
@@ -204,10 +199,9 @@ history = await memora.graph.get_user_memory_history(org_id, user_id, "memory_uu
 
 # Delete a specific memory
 await memora.graph.delete_user_memory(org_id, user_id, "memory_uuid")
-```
 
-!!! note
-    For more methods, see the `API Reference` page on your desired GraphDB implementation. (Just [Neo4j](api/graph_db/neo4j.md) for now.)
+... # See documentation for more methods.
+```
 
 
 ## **A Simple Example**
