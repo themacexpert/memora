@@ -61,5 +61,5 @@ memora/
 ## Next Steps
 
 - [Getting Started](getting_started.md) - Set up and run your first Memora instance
+- [Advanced Usage](advanced_usage.md) - Explore advanced features and use cases
 - [API Reference](api/index.md) - Detailed API documentation
-- [Advanced Usage](advanced_usage.md) - Advanced features and customization

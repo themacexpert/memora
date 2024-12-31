@@ -1,8 +1,4 @@
-# Getting Started with Memora
-
-Memora is a powerful memory system that combines vector and graph databases to provide context-aware memory storage and retrieval for AI agents. This guide will help you get started with setting up and using Memora.
-
-## **Prerequisites**
+# **Prerequisites**
 
 Before using Memora, you'll need to set up the following:
 
@@ -80,7 +76,7 @@ agent_id = agent['agent_id'] # Short UUID e.g 'CcyKXxhi2skEcDpRzNZim7'
 
 ```
 
-!!! important
+!!! note "Important Note"
     For organization, user, agent, and interaction IDs, we use `shortuuid.uuid()` to generate compact short UUIDs, a base57-encoded version of standard UUIDs. They are shorter but retain the same uniqueness.
 
     For memory IDs, we use the standard UUIDs `uuid.uuid4()`, as these are supported as vector IDs for the vast majority of vector databases.
