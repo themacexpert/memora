@@ -23,7 +23,7 @@ Before using Memora, you'll need to set up the following:
 Install Memora using pip:
 
 ```bash
-pip install memora
+pip install memora-agent
 ```
 
 ## **Basic Setup**
