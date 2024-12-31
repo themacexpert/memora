@@ -2,7 +2,7 @@
 
 ## **The Graph Model**
 
-![Graph Model](pictures/Memora_Graph_Model.png)
+![Graph Model](pictures/memora_graph_model_0_0_1.png)
 
 !!! note "Multi-Tenant Design"
     - Memora supports multiple orgs, agents, and users in one system 🏢👥🤖
@@ -48,6 +48,113 @@ Memora integrates vector and graph databases to efficiently manage and search me
     Memories are stored using placeholders for user names and agent labels, like `user_{short_uuid} loves peanuts` or `agent_{short_uuid} wishes to go on a trip to Kyoto`. This approach allows for future changes to the user's name or agent label, ensuring that we always use the latest name or label.
 
 Additionally, **indexes** have been created in Qdrant to support multi-tenancy and enable search scopes, such as specific user searches within an organization or searches across organizations.
+
+
+## **Reducing Memory Search Latency**
+
+Instead of using `await memora.recall_memories_for_message(...)`, which internally first calls a model to generate search queries, you can achieve better latency by:
+
+1. Having your chat model generate the memory search queries directly
+2. Passing these queries to `await memora.search_memories_as_one(...)`
+
+This approach bypasses an extra model call to generate memory queries, reducing both token usage and latency. Here's a simple example:
+
+```python
+from openai import AsyncOpenAI
+import json
+
+... # Preceding code where you have initialized memora, and stored org_id and user_id in variables.
+
+# Define the memory search tool
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memories",
+            "description": "Search through user's memories with specific queries.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "queries": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of search queries to find relevant memories."
+                    }
+                },
+                "required": ["queries"]
+            }
+        },
+    }
+]
+
+# Async client initialization
+client = AsyncOpenAI(api_key="YourOpenAIAPIKey")
+
+messages=[
+    {
+        "role": "system", 
+        "content": "You are an assistant. When responding to the user, if you need memory to provide the best response, call the 'search_memories' tool with the required search queries."
+    },
+    {
+        "role": "user", 
+        "content": "Hey, what’s the name of the restaurant we went to last weekend? The one with the amazing tacos?"
+    }
+]
+
+# Step 1: Prompt the model.
+response = await client.chat.completions.create(
+    model="gpt-4o",
+    messages=messages,
+    tools=tools  # Include the memory search tool in the request
+)
+
+# Step 2: Extract the response and any tool call responses
+response_message = response.choices[0].message
+tool_calls = response_message.tool_calls
+
+messages.append(response_message) # Add the LLM's response to the conversation
+
+if tool_calls: # The memory search tool was called.
+
+    # There is only one tool (memory search, so we just extract the arguments).
+    search_args = json.loads(tool_calls[0].function.arguments)  # Example: {"queries": ["restaurant last weekend", "amazing tacos"]}
+    queries = search_args["queries"] # ["restaurant last weekend", "amazing tacos"]
+
+    # Step 3: Perform memory search with queries as a single batch
+    recalled_memories, memory_ids = await memora.search_memories_as_one(
+        org_id=org_id,
+        user_id=user_id,
+        search_queries=queries,
+        search_across_agents=True
+    )
+
+    # recalled_memories: [{"memory": "Jake confirmed Chezy has the best tacos, saying his mouth literally watered.", "obtained_at": "iso_timestamp"}, {"memory": "Jake is planing to go to Chezy this weekend.", "obtained_at": "iso_timestamp"}]
+
+    # Add the tool response to the conversation
+    messages.append(
+        {
+            "tool_call_id": tool_calls[0].id, 
+            "role": "tool", # Indicates this message is from tool use
+            "name": "search_memories",
+            "content": str(recalled_memories),
+        }
+    )
+
+    # Make a final API call with the updated conversation that has the memories of the tool call.
+    final_response = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages
+    )
+    
+    # Print the final response
+    print(f">>> Assistant Reply: {final_response.choices[0].message.content}")
+
+else: # The memory search tool wasn't called
+    print(f">>> Assistant Reply: {response_message.content}")
+```
+
+!!! note
+    If you deploy the graph and vector database very close to your application, it reduces latency caused by network trips a lot.
 
 
 ## **Extending Base Classes**

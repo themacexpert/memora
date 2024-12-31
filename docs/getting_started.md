@@ -199,25 +199,35 @@ await memora.graph.delete_user_memory(org_id, user_id, "memory_uuid")
     For more methods, see the `API Reference` page on your desired GraphDB implementation. (Just [Neo4j](api/graph_db/neo4j.md) for now.)
 
 
+## **A Simple Example**
 
-## **Building a Sample Personal Assistant with Memory**
+```python
+from openai import AsyncOpenAI
+
+... # Preceding code where you have initialized memora, and stored org_id and user_id in variables.
+
+# Async client initialization
+client = AsyncOpenAI(api_key="YourOpenAIAPIKey")
+
+messages=[{ "role": "system", "content": "You are jake's assistant, given memories in 'memory recall: ...'"}]
+
+user_message = "Hello, what is my wife's name ?"
+recalled_memories, _ = await memora.recall_memories_for_message(org_id, user_id, latest_msg=user_message)
+
+include_memory_in_message = """
+    memory recall: {memories}\n---\nmessage: {message}
+""".format(memories=str(recalled_memories), message=user_message)
+
+messages.append({'role': 'user', 'content': include_memory_in_message})
+response = await client.chat.completions.create(model="gpt-4o", messages=messages)
+
+print(f">>> Assistant Reply: {response.choices[0].message.content}")
+
+```
+
+## **A Tad Bit Complex Personal Assistant with Memora**
 
 Here's a sample example of a personal assistant that using Memora:
-
-!!! note
-    This sample assumes that Setup which is required on the very first run only (creates indexes and constraints) as already been called.
-
-    ```python
-    from qdrant_client import AsyncQdrantClient
-    from memora.vector_db import QdrantDB
-    from memora.graph_db import Neo4jGraphInterface
-
-    vector_db = QdrantDB(async_client=AsyncQdrantClient(url="QDRANT_URL", api_key="QDRANT_API_KEY"))
-    graph_db = Neo4jGraphInterface(uri="Neo4jURI", username="Username", password="Password", database="DBName")
-
-    await vector_db.setup()
-    await graph_db.setup()
-    ```
 
 ```python
 from typing import *
@@ -228,6 +238,7 @@ from memora.graph_db import Neo4jGraphInterface
 from memora.llm_backends import GroqBackendLLM
 
 class PersonalAssistant:
+
     def __init__(self, org_id: str, user_id: str, system_prompt: str):
 
         self.org_id = org_id
@@ -241,49 +252,38 @@ class PersonalAssistant:
             database="NEO4J_DATABASE"
         )
 
-        # Initialize memora
         self.memora = Memora(
             vector_db=vector_db, graph_db=graph_db,
             memory_search_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.1-8b-instant"),
             extraction_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.3-70b-specdec", max_tokens=8000),
         )
 
-        # We recommend using your LLM provider implementation for the chat model. This allows you to utilize features like streaming and tools. 
-        # The backend LLMs are tailored for Memora's needs (non-stream, structured output).
+        # We recommend using your LLM provider implementation (openai, groq client etc.) instead of BaseBackendLLM for the chat model to utilize features like streaming and tools.
         self.chat_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
-        # Track conversation history: clean version for saving and as preceding message context in memory search.
+        # Track history: clean version without memory recalls. See "Why Track Two histories?" below.
         self.base_history = [{"role": "system", "content": system_prompt}]
 
         # Version with memory recalls for prompting
         self.prompt_history = self.base_history.copy()
-        # Track retrieved memory IDs already in the prompt history (```memory recall ...````), so they are not retrieved again.
         self.already_recalled_memory_ids: Set[str] = set()
 
     async def chat(self, user_message: str) -> str:
-        
+
         recalled_memories, recalled_memory_ids = await self.memora.recall_memories_for_message(
             self.org_id, self.user_id,
-            user_message, preceding_msg_for_context=self.base_history,
+            user_message, preceding_msg_for_context=self.base_history[1:], # Exclude system prompt.
             filter_out_memory_ids_set=self.already_recalled_memory_ids
         )
 
-        # Format message with memories
-        formatted_msg = """
-            ```memory recall
-            - {memories}
-            ```
-            message: {message}
-        """.format(
-            memories="\n".join(f"- {str(memory)}" for memory in recalled_memories) if recalled_memories else "None recalled.",
-            message=user_message
-        )
+        include_memory_in_message = """
+            memory recall: {memories}\n---\nmessage: {message}
+        """.format(memories=str(recalled_memories), message=user_message)
 
         # Get model response
         response = await self.chat_client.chat.completions.create(
-            messages=self.prompt_history + [{"role": "user", "content": formatted_msg}],
+            messages=self.prompt_history + [{"role": "user", "content": include_memory_in_message}],
             model="llama-3.3-70b-specdec",
-            temperature=1,
             stream=False
         )
         assistant_reply = response.choices[0].message.content
@@ -291,25 +291,27 @@ class PersonalAssistant:
         # Update conversation histories
         self.base_history.extend([{"role": "user", "content": user_message}, {"role": "assistant", "content": assistant_reply}])
         
-        # Note: This version uses the formatted_msg containing memory recalls.
-        self.prompt_history.extend([{"role": "user", "content": formatted_msg}, {"role": "assistant", "content": assistant_reply}])
+        # Note: This version uses the message with memory recalled.
+        self.prompt_history.extend([{"role": "user", "content": include_memory_in_message}, {"role": "assistant", "content": assistant_reply}])
         
         self.already_recalled_memory_ids.update(recalled_memory_ids or [])
         
         return assistant_reply
 
     async def save_interaction(self) -> Tuple[str, str]:
+
         interaction_id, created_at = await self.memora.save_or_update_interaction_and_memories(
             self.org_id, self.user_id, 
-            interaction=self.base_history # Always use the base_history for saving / updating.
+            interaction=self.base_history[1:] # Always use the base_history with system prompt for saving / updating.
         )
         return interaction_id, created_at
 
 
 async def main():
+
     assistant = PersonalAssistant(
         org_id, user_id, 
-        "You are jake's assistant, with a memory agent that provides memories recalled for jake's message ```memory recall ...```."
+        "You are jake's assistant, given memories in 'memory recall: ...'"
     )
 
     while True:
@@ -326,12 +328,12 @@ async def main():
 
     We need two versions:
 
-    1. **Base Version**: Contains only the user message and the assistant's reply.
-    2. **Prompted Version**: Includes the recalled memories along with the user message and the assistant's reply. This version is used for prompting.
+    1. **Base History**: Contains only the user message and the assistant's reply.
+    2. **Prompted History**: Includes the recalled memories along with the user message and the assistant's reply. This version is used for prompting.
 
-    The recalled memories are kept in the prompted version for many reasons one being so later in the same interaction if the user asks why the AI provided a particular reply, the AI can reference the memories listed under `memory recall` above that user message.
+    The recalled memories are kept in the prompted history for many reasons one being so later in the same interaction if the user asks why the AI provided a particular reply, the AI can reference the memories listed under `memory recall` above that user message.
 
-    When saving the interaction or using preceding messages for context in a memory search, we use the base version without the memory recalls. This is because for saving, we only need new memories from that interaction and when referencing preceding messages, we focus on what was previously said, so their memory recalls are not necessary.
+    When saving the interaction or using preceding messages for context in a memory search, we use the base history without the memory recalls. This is because for saving, we only need new memories from that interaction and when referencing preceding messages, we focus on what was previously said, so their memory recalls are not necessary.
 
 
 ## Advanced Usage
