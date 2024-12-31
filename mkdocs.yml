@@ -2,14 +2,16 @@ repo_url: https://github.com/ELZAI/memora/
 site_author: Jonathan Okorie
 
 site_name: Memora
-site_description: A Human Memory Agent For AI
+site_description: Memora is an agent designed to give every personalized AI with human memory.
 site_url: https://elzai.com/memora/docs
 
 theme:
   name: material
+  favicon: pictures/favicon.png
+  logo: pictures/white_logo.png
   palette:
     - media: "(prefers-color-scheme: light)"
-      scheme: default
+      scheme: slate
       primary: black
       accent: white
       toggle:
@@ -17,7 +19,7 @@ theme:
         name: Switch to dark mode
         
     - media: "(prefers-color-scheme: dark)"
-      scheme: slate
+      scheme: default
       primary: black
       accent: black
       toggle:
@@ -31,15 +33,20 @@ theme:
   features:
     - search.suggest
     - search.highlight
+    - search.share
     - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.indexes
     - navigation.top
+    - navigation.path
+    - navigation.tracking
+    - navigation.footer
     - toc.follow
     - content.code.copy
     - content.code.annotate
     - content.tabs.link
+    - content.tooltips
 
 plugins:
   - search
@@ -123,3 +130,14 @@ nav:
       - Extraction: api/prompts/extraction.md
       - Search: api/prompts/search.md
       - Filter: api/prompts/filter.md
+
+extra:
+  social:
+    - icon: fontawesome/solid/globe
+      link: https://www.elzai.com
+
+    - icon: fontawesome/brands/github
+      link: https://github.com/ELZAI/memora/
+      
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/80737492/

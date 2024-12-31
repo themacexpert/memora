@@ -5,7 +5,7 @@
 ![Graph Model](pictures/memora_graph_model_0_0_1.png)
 
 !!! note "Multi-Tenant Design"
-    - Memora supports multiple orgs, agents, and users in one system 🏢👥🤖
+    - Memora accommodates multiple organizations, agents, and users in one system 🏢👥🤖
     - Strategic indexes for fast queries regardless of `MemorySearchScope` ⚡
 
 
