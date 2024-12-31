@@ -5,16 +5,18 @@ from together import AsyncTogether
 
 from .base import BaseBackendLLM
 
+
 class TogetherBackendLLM(BaseBackendLLM):
 
-    def __init__(self,
-                api_key: str,
-                model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-                temperature: float = 0.7,
-                top_p: float = 1,
-                max_tokens: int = 1024,
-                max_retries: int = 3
-                ):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        temperature: float = 0.7,
+        top_p: float = 1,
+        max_tokens: int = 1024,
+        max_retries: int = 3,
+    ):
         """
         Initialize the TogetherLLM class with specific parameters.
 
@@ -50,31 +52,38 @@ class TogetherBackendLLM(BaseBackendLLM):
             "temperature": self.temperature,
             "top_p": self.top_p,
             "max_tokens": self.max_tokens,
-            "stream": False
+            "stream": False,
         }
-    
+
     @override
-    async def __call__(self, messages: List[Dict[str, str]], output_schema_model: Type[BaseModel] | None = None) -> Union[str, BaseModel]:
+    async def __call__(
+        self,
+        messages: List[Dict[str, str]],
+        output_schema_model: Type[BaseModel] | None = None,
+    ) -> Union[str, BaseModel]:
         """
         Process messages and generate response (📌 Streaming is not supported, as full response is required at once)
-        
+
         Args:
             messages (List[Dict[str, str]]): List of message dicts with role and content e.g [{"role": "user", "content": "Hello!"}, ...]
             output_schema_model (Type[BaseModel] | None): Optional Pydantic base model for structured output (📌 Ensure the choosen model supports this)
-        
+
         Returns:
             Union[str, BaseModel]: Generated text response as a string, or an instance of the output schema model if specified
         """
-        
+
         if output_schema_model:
             response = await self.together_client.chat.completions.create(
                 messages=messages,
                 **self.get_model_kwargs,
-                response_format={"type": "json_object", "schema": output_schema_model.model_json_schema()},
+                response_format={
+                    "type": "json_object",
+                    "schema": output_schema_model.model_json_schema(),
+                },
             )
             content = response.choices[0].message.content
             return output_schema_model.model_validate_json(content)
-        
+
         else:
             response = await self.together_client.chat.completions.create(
                 messages=messages,

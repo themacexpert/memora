@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Awaitable, Callable, Dict, List, Tuple, Optional
 from ..schema.save_memory_schema import MemoriesAndInteraction
 
+
 class BaseGraphDB(ABC):
     """
     Abstract base class defining a common interface for different Graph DB implementations.
-    
+
     This class provides a standardized interface for graph database operations, including
     creating, retrieving, and deleting memory nodes and relationships.
     """
@@ -25,13 +26,10 @@ class BaseGraphDB(ABC):
 
     # Organization methods
     @abstractmethod
-    async def create_organization(
-        self, 
-        org_name: str
-    ) -> Dict[str, str]:
+    async def create_organization(self, org_name: str) -> Dict[str, str]:
         """
         Creates a new organization in the graph database.
-        
+
         Args:
             org_name (str): The name of the organization to create.
 
@@ -46,13 +44,11 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def update_organization(
-        self,
-        org_id: str,
-        new_org_name: str
+        self, org_id: str, new_org_name: str
     ) -> Dict[str, str]:
         """
         Updates an existing organization in the graph database.
-        
+
         Args:
             org_id (str): The Short UUID of the organization to update.
             new_org_name (str): The new name for the organization.
@@ -66,35 +62,29 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def delete_organization(
-        self,
-        org_id: str
-    ) -> None:
+    async def delete_organization(self, org_id: str) -> None:
         """
         Deletes an organization from the graph database.
 
         ⚠️ DANGER: This operation will delete all nodes and relationships from this organization
         including users, agents, memories, interactions etc.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization to delete.
         """
         pass
 
     @abstractmethod
-    async def get_organization(
-        self,
-        org_id: str
-    ) -> Dict[str, str]:
+    async def get_organization(self, org_id: str) -> Dict[str, str]:
         """
         Gets a specific organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization to retrieve.
 
         Returns:
             Dict[str, str] containing:
-            
+
                 + org_id: Short UUID string
                 + org_name: Organization name
                 + created_at: ISO format timestamp
@@ -104,14 +94,11 @@ class BaseGraphDB(ABC):
     # Agent methods
     @abstractmethod
     async def create_agent(
-        self,
-        org_id: str,
-        agent_label: str,
-        user_id: Optional[str] = None
+        self, org_id: str, agent_label: str, user_id: Optional[str] = None
     ) -> Dict[str, str]:
         """
         Creates a new agent in the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             agent_label (str): Label/name for the agent.
@@ -121,10 +108,10 @@ class BaseGraphDB(ABC):
 
         Returns:
             Dict[str, str] containing:
-            
+
                 + org_id: Short UUID string
                 + user_id: Optional Short UUID string
-                + agent_id: Short UUID string 
+                + agent_id: Short UUID string
                 + agent_label: Agent label/name
                 + created_at: ISO format timestamp
         """
@@ -132,10 +119,7 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def update_agent(
-        self,
-        org_id: str,
-        agent_id: str,
-        new_agent_label: str
+        self, org_id: str, agent_id: str, new_agent_label: str
     ) -> Dict[str, str]:
         """
         Updates an existing agent in the graph database.
@@ -147,7 +131,7 @@ class BaseGraphDB(ABC):
 
         Returns:
             Dict[str, str] containing:
-            
+
                 + org_id: Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
@@ -155,14 +139,10 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def delete_agent(
-        self,
-        org_id: str,
-        agent_id: str
-    ) -> None:
+    async def delete_agent(self, org_id: str, agent_id: str) -> None:
         """
         Deletes an agent from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             agent_id (str): Short UUID string identifying the agent to delete.
@@ -170,21 +150,17 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_agent(
-        self,
-        org_id: str,
-        agent_id: str
-    ) -> Dict[str, str]:
+    async def get_agent(self, org_id: str, agent_id: str) -> Dict[str, str]:
         """
         Gets a specific agent belonging to the specified organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             agent_id (str): Short UUID string identifying the agent to retrieve.
 
         Returns:
             Dict[str, str] containing:
-            
+
                 + org_id: Short UUID string
                 + user_id: Optional Short UUID string if agent is associated with a user [:HAS_AGENT].
                 + agent_id: Short UUID string
@@ -194,20 +170,17 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_all_org_agents(
-        self,
-        org_id: str
-    ) -> List[Dict[str, str]]:
+    async def get_all_org_agents(self, org_id: str) -> List[Dict[str, str]]:
         """
         Gets all agents belonging to the specified organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
 
         Returns:
             A List[Dict[str, str]], each containing:
 
-                + org_id: Short UUID string 
+                + org_id: Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
                 + created_at: ISO format timestamp
@@ -216,21 +189,19 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_all_user_agents(
-        self,
-        org_id: str,
-        user_id: str
+        self, org_id: str, user_id: str
     ) -> List[Dict[str, str]]:
         """
         Gets all agents for a user within an organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
 
         Returns:
             A List[Dict[str, str]], each containing:
-            
-                + org_id: Short UUID string 
+
+                + org_id: Short UUID string
                 + user_id: Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
@@ -240,21 +211,17 @@ class BaseGraphDB(ABC):
 
     # User methods
     @abstractmethod
-    async def create_user(
-        self,
-        org_id: str,
-        user_name: str
-    ) -> Dict[str, str]:
+    async def create_user(self, org_id: str, user_name: str) -> Dict[str, str]:
         """
         Creates a new user in the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_name (str): Name for the user.
 
         Returns:
             Dict[str, str] containing:
-            
+
                 + org_id: Short UUID string
                 + user_id: Short UUID string
                 + user_name: User's name
@@ -264,14 +231,11 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def update_user(
-        self,
-        org_id: str,
-        user_id: str,
-        new_user_name: str
+        self, org_id: str, user_id: str, new_user_name: str
     ) -> Dict[str, str]:
         """
         Updates an existing user in the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user to update.
@@ -287,14 +251,10 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def delete_user(
-        self,
-        org_id: str,
-        user_id: str
-    ) -> None:
+    async def delete_user(self, org_id: str, user_id: str) -> None:
         """
         Deletes a user from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user to delete.
@@ -302,14 +262,10 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_user(
-        self,
-        org_id: str,
-        user_id: str
-    ) -> Dict[str, str]:
+    async def get_user(self, org_id: str, user_id: str) -> Dict[str, str]:
         """
         Gets a specific user belonging to the specified organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user to retrieve.
@@ -324,14 +280,11 @@ class BaseGraphDB(ABC):
         """
         pass
 
-    @abstractmethod 
-    async def get_all_users(
-        self,
-        org_id: str
-    ) -> List[Dict[str, str]]:
+    @abstractmethod
+    async def get_all_users(self, org_id: str) -> List[Dict[str, str]]:
         """
         Gets all users belonging to the specified organization from the graph database.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
 
@@ -339,7 +292,7 @@ class BaseGraphDB(ABC):
             List[Dict[str, str]], each containing:
 
                 + org_id: Short UUID string
-                + user_id: Short UUID string 
+                + user_id: Short UUID string
                 + user_name: User's name
                 + created_at: ISO format timestamp
         """
@@ -350,14 +303,14 @@ class BaseGraphDB(ABC):
     async def save_interaction_with_memories(
         self,
         org_id: str,
-        agent_id: str, 
+        agent_id: str,
         user_id: str,
         memories_and_interaction: MemoriesAndInteraction,
-        vector_db_add_memories_fn: Callable[..., Awaitable[None]]
+        vector_db_add_memories_fn: Callable[..., Awaitable[None]],
     ) -> Tuple[str, str]:
         """
         Creates a new interaction record with associated memories.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             agent_id (str): Short UUID string identifying the agent.
@@ -365,7 +318,7 @@ class BaseGraphDB(ABC):
             memories_and_interaction (MemoriesAndInteraction): Contains both the interaction and the associated memories.
             vector_db_add_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.add_memories`),
                 called in the graph transaction block to ensure data consistency.
-        
+
         Returns:
             Tuple[str, str] containing:
 
@@ -382,19 +335,19 @@ class BaseGraphDB(ABC):
         user_id: str,
         interaction_id: str,
         updated_memories_and_interaction: MemoriesAndInteraction,
-        vector_db_add_memories_fn: Callable[..., Awaitable[None]]
+        vector_db_add_memories_fn: Callable[..., Awaitable[None]],
     ) -> Tuple[str, str]:
         """
         Update an existing interaction record and add new memories.
-        
+
         Compares updated interaction with existing one:
             - If differences are found, truncates existing record from that point and
             replaces with updated version. Old memories from truncated message(s)
             remain but become standalone (no longer linked to truncated messages).
             - If no differences, appends new messages from the update.
-        
+
         New memories are always added, regardless of interaction changes.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             agent_id (str): Short UUID string identifying the agent in the updated interaction.
@@ -414,19 +367,16 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_interaction_messages(
-        self,
-        org_id: str,
-        user_id: str,
-        interaction_id: str
+        self, org_id: str, user_id: str, interaction_id: str
     ) -> List[Dict[str, str]]:
         """
         Retrieves all messages associated with a specific interaction.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction.
-            
+
         Returns:
             List[Dict[str, str]], each containing message details:
 
@@ -438,19 +388,16 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_all_interaction_memories(
-        self,
-        org_id: str,
-        user_id: str,
-        interaction_id: str
+        self, org_id: str, user_id: str, interaction_id: str
     ) -> List[Dict[str, str]]:
         """
         Retrieves all memories associated with a specific interaction.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction.
-            
+
         Returns:
             List[Dict[str, str]], each containing memory details:
 
@@ -467,14 +414,14 @@ class BaseGraphDB(ABC):
         user_id: str,
         with_their_messages: bool = True,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict[str, str]]:
         """
         Retrieves all interactions for a specific user in an organization.
 
         Note:
             Interaction are sorted in descending order by their updated at datetime. (So most recent interactions are first).
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
@@ -496,11 +443,11 @@ class BaseGraphDB(ABC):
         org_id: str,
         user_id: str,
         interaction_id: str,
-        vector_db_delete_memories_by_id_fn: Callable[..., Awaitable[None]]
+        vector_db_delete_memories_by_id_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes an interaction record and its associated memories.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
@@ -515,22 +462,23 @@ class BaseGraphDB(ABC):
         self,
         org_id: str,
         user_id: str,
-        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]]
+        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes all interactions and their associated memories for a specific user in an organization.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user whose interactions should be deleted
-            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`), 
+            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`),
                 called in the graph transaction block to ensure data consistency.
         """
         pass
 
-
     # Memory methods
-    def fetch_user_memories_resolved(self, org_user_mem_ids: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def fetch_user_memories_resolved(
+        self, org_user_mem_ids: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
         """
         Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
@@ -546,7 +494,7 @@ class BaseGraphDB(ABC):
             List[Dict[str, str]] containing memory details:
 
                 + memory_id: UUID string identifying the memory
-                + memory: String content of the resolved memory 
+                + memory: String content of the resolved memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
 
         Example:
@@ -562,7 +510,9 @@ class BaseGraphDB(ABC):
         """
         pass
 
-    def fetch_user_memories_resolved_batch(self, batch_org_user_mem_ids: List[List[Dict[str, str]]]) -> List[List[Dict[str, str]]]:
+    def fetch_user_memories_resolved_batch(
+        self, batch_org_user_mem_ids: List[List[Dict[str, str]]]
+    ) -> List[List[Dict[str, str]]]:
         """
         Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
@@ -578,7 +528,7 @@ class BaseGraphDB(ABC):
             List[List[Dict[str, str]]] with memory details:
 
                 + memory_id: UUID string identifying the memory
-                + memory: String content of the resolved memory 
+                + memory: String content of the resolved memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
 
         Example:
@@ -596,19 +546,16 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_user_memory(
-        self,
-        org_id: str,
-        user_id: str,
-        memory_id: str
+        self, org_id: str, user_id: str, memory_id: str
     ) -> Dict[str, str]:
         """
         Retrieves a specific memory.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
             memory_id (str): UUID string identifying the memory
-            
+
         Returns:
             Dict[str, str] containing memory details:
 
@@ -620,19 +567,16 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_user_memory_history(
-        self,
-        org_id: str,
-        user_id: str,
-        memory_id: str
+        self, org_id: str, user_id: str, memory_id: str
     ) -> List[Dict[str, str]]:
         """
         Retrieves the history of a specific memory.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
             memory_id (str): UUID string identifying the memory
-            
+
         Returns:
             List[Dict[str, str]] containing the history of memory details in descending order (starting with the current version, to the oldest version):
 
@@ -644,26 +588,23 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_all_user_memories(
-        self,
-        org_id: str,
-        user_id: str,
-        agent_id: Optional[str] = None
+        self, org_id: str, user_id: str, agent_id: Optional[str] = None
     ) -> List[Dict[str, str]]:
         """
         Retrieves all memories associated with a specific user.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
-            agent_id (Optional[str]): Optional Short UUID string identifying the agent. If provided, only memories obtained from 
-                interactions with this agent are returned. 
+            agent_id (Optional[str]): Optional Short UUID string identifying the agent. If provided, only memories obtained from
+                interactions with this agent are returned.
                 Otherwise, all memories associated with the user are returned.
-            
+
         Returns:
             List[Dict[str, str]] containing memory details:
 
                 + memory_id: UUID string identifying the memory
-                + memory: String content of the memory 
+                + memory: String content of the memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
         """
         pass
@@ -674,11 +615,11 @@ class BaseGraphDB(ABC):
         org_id: str,
         user_id: str,
         memory_id: str,
-        vector_db_delete_memory_by_id_fn: Callable[..., Awaitable[None]]
+        vector_db_delete_memory_by_id_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes a specific memory.
-        
+
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
@@ -693,7 +634,7 @@ class BaseGraphDB(ABC):
         self,
         org_id: str,
         user_id: str,
-        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]]
+        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes all memories of a specific user.
@@ -701,8 +642,7 @@ class BaseGraphDB(ABC):
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
-            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`), 
+            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`),
                 called in the graph transaction block to ensure data consistency.
         """
         pass
-

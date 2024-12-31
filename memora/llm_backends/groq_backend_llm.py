@@ -5,16 +5,18 @@ from groq import AsyncGroq
 
 from .base import BaseBackendLLM
 
+
 class GroqBackendLLM(BaseBackendLLM):
 
-    def __init__(self,
-                api_key: str,
-                model: str = "llama-3.3-70b-specdec",
-                temperature: float = 1,
-                top_p: float = 1,
-                max_tokens: int = 1024,
-                max_retries: int = 3,
-                ):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "llama-3.3-70b-specdec",
+        temperature: float = 1,
+        top_p: float = 1,
+        max_tokens: int = 1024,
+        max_retries: int = 3,
+    ):
         """
         Initialize the GroqLLM class with specific parameters.
 
@@ -51,18 +53,22 @@ class GroqBackendLLM(BaseBackendLLM):
             "temperature": self.temperature,
             "top_p": self.top_p,
             "max_tokens": self.max_tokens,
-            "stream": False
+            "stream": False,
         }
 
     @override
-    async def __call__(self, messages: List[Dict[str, str]], output_schema_model: Type[BaseModel] | None = None) -> Union[str, BaseModel]:
+    async def __call__(
+        self,
+        messages: List[Dict[str, str]],
+        output_schema_model: Type[BaseModel] | None = None,
+    ) -> Union[str, BaseModel]:
         """
         Process messages and generate response (📌 Streaming is not supported, as full response is required at once)
-        
+
         Args:
             messages (List[Dict[str, str]]): List of message dicts with role and content e.g [{"role": "user", "content": "Hello!"}, ...]
             output_schema_model (Type[BaseModel] | None): Optional Pydantic base model for structured output (📌 Ensure the choosen model supports this)
-        
+
         Returns:
             Union[str, BaseModel]: Generated text response as a string, or an instance of the output schema model if specified
         """
@@ -75,11 +81,10 @@ class GroqBackendLLM(BaseBackendLLM):
             )
             content = response.choices[0].message.content
             return output_schema_model.model_validate_json(content)
-        
+
         else:
             response = await self.groq_client.chat.completions.create(
                 messages=messages,
                 **self.get_model_kwargs,
             )
             return response.choices[0].message.content
-

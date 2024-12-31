@@ -5,16 +5,18 @@ from openai import AsyncOpenAI
 
 from .base import BaseBackendLLM
 
+
 class OpenAIBackendLLM(BaseBackendLLM):
 
-    def __init__(self,
-                api_key: str,
-                model: str,
-                temperature: float = 0.7,
-                top_p: float = 1,
-                max_tokens: int = 1024,
-                max_retries: int = 3,
-                ):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        temperature: float = 0.7,
+        top_p: float = 1,
+        max_tokens: int = 1024,
+        max_retries: int = 3,
+    ):
         """
         Initialize the OpenAILLM class with specific parameters.
 
@@ -27,7 +29,7 @@ class OpenAIBackendLLM(BaseBackendLLM):
             max_retries (int): The maximum number of retries to make if a request fails
         """
 
-        self.openai_client = AsyncOpenAI(api_key=api_key,max_retries=max_retries)
+        self.openai_client = AsyncOpenAI(api_key=api_key, max_retries=max_retries)
 
         self.model = model
         self.temperature = temperature
@@ -50,18 +52,22 @@ class OpenAIBackendLLM(BaseBackendLLM):
             "model": self.model,
             "temperature": self.temperature,
             "top_p": self.top_p,
-            "max_tokens": self.max_tokens
+            "max_tokens": self.max_tokens,
         }
 
     @override
-    async def __call__(self, messages: List[Dict[str, str]], output_schema_model: Type[BaseModel] | None = None) -> Union[str, BaseModel]:
+    async def __call__(
+        self,
+        messages: List[Dict[str, str]],
+        output_schema_model: Type[BaseModel] | None = None,
+    ) -> Union[str, BaseModel]:
         """
         Process messages and generate response (📌 Streaming is not supported, as full response is required at once)
-        
+
         Args:
             messages (List[Dict[str, str]]): List of message dicts with role and content e.g [{"role": "user", "content": "Hello!"}, ...]
             output_schema_model (Type[BaseModel] | None): Optional Pydantic base model for structured output.
-        
+
         Returns:
             Union[str, BaseModel]: Generated text response as a string, or an instance of the output schema model if specified
         """

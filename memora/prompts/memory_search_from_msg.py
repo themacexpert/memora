@@ -1,4 +1,4 @@
-MSG_MEMORY_SEARCH_PROMPT ="""
+MSG_MEMORY_SEARCH_PROMPT = """
 You are a memory agent. Your task is to generate memory search queries based on the latest message to the room.
 
 Input:
@@ -32,4 +32,4 @@ MSG_MEMORY_SEARCH_TEMPLATE = """
 ---
 {message_of_user}
 ---
-""" 
+"""
