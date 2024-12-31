@@ -1,4 +1,4 @@
-![Memora](pictures/memora_banner.png)
+![Memora](docs/pictures/memora_banner.png)
 
 When we interact with people 🗣️👂, we naturally remember details from past interactions 💭, feelings 😜😢, and shared experiences 🤝. That's what makes us human. **We're bringing this same ability to AI, helping it recall just like us.**
 
