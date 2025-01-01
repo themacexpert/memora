@@ -3,7 +3,6 @@ site_author: Jonathan Okorie
 
 site_name: Memora
 site_description: Memora is an agent designed to give every personalized AI with human memory.
-site_url: https://elzai.com/memora/docs
 
 theme:
   name: material
