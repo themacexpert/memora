@@ -8,3 +8,4 @@ test.ipynb
 **/__pycache__
 
 site/
+dist/

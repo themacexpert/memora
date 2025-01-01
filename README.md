@@ -1,4 +1,4 @@
-![Memora](docs/pictures/memora_banner.png)
+![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
 
 **[📚 Checkout Documentation](https://elzai.github.io/memora/)**
 
