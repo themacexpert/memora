@@ -1,4 +1,4 @@
-test.ipynb
+*.ipynb
 
 # Environment variables.
 .env

@@ -564,7 +564,17 @@ class Neo4jInteraction(BaseGraphDB):
                     user_id: $user_id,
                     interaction_id: $interaction_id
                 })<-[:INTERACTION_SOURCE]-(m:Memory)
-                RETURN m{.memory_id, .memory, obtained_at: toString(m.obtained_at)} as memory
+                WITH m
+                MATCH (user:User {org_id: m.org_id, user_id: m.user_id})              
+                MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
+                RETURN m{
+                    .memory_id, 
+                    memory: apoc.text.replace(
+                        apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                        '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                    ), 
+                    obtained_at: toString(m.obtained_at)
+                } as memory
             """,
                 org_id=org_id,
                 user_id=user_id,

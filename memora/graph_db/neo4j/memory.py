@@ -139,11 +139,20 @@ class Neo4jMemory(BaseGraphDB):
                 + obtained_at: ISO format timestamp of when the memory was obtained
         """
 
-        async def get_memory_tx(tx):
+        async def get_memory_tx(tx): 
             result = await tx.run(
                 """
                 MATCH (m:Memory {org_id: $org_id, user_id: $user_id, memory_id: $memory_id})
-                RETURN m{.memory_id, .memory, obtained_at: toString(m.obtained_at)} as memory
+                MATCH (user:User {org_id: m.org_id, user_id: m.user_id})              
+                MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
+                RETURN m{
+                        .memory_id, 
+                        memory: apoc.text.replace(
+                            apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                        ), 
+                        obtained_at: toString(m.obtained_at)
+                    } as memory
             """,
                 org_id=org_id,
                 user_id=user_id,
@@ -184,7 +193,16 @@ class Neo4jMemory(BaseGraphDB):
                 WHERE NOT (olderMemory)<-[:CONTRARY_UPDATE]-()
                 WITH nodes(path) AS memory_history
                 UNWIND memory_history AS memory
-                RETURN memory{.memory_id, .memory, obtained_at: toString(memory.obtained_at)} as memory
+                MATCH (user:User {org_id: memory.org_id, user_id: memory.user_id})              
+                MATCH (agent:Agent {org_id: memory.org_id, agent_id: memory.agent_id})
+                RETURN memory{
+                        .memory_id, 
+                        memory: apoc.text.replace(
+                            apoc.text.replace(memory.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                        ), 
+                        obtained_at: toString(memory.obtained_at)
+                    } as memory
             """,
                 org_id=org_id,
                 user_id=user_id,
@@ -225,10 +243,19 @@ class Neo4jMemory(BaseGraphDB):
             if agent_id:  # Filter to only memories from interactions with this agent.
                 result = await tx.run(
                     """
-                    MATCH (u:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
+                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
                     MATCH (mc)-[:INCLUDES]->(m:Memory)
                     WHERE m.agent_id = $agent_id
-                    RETURN m{.memory_id, .memory, obtained_at: toString(m.obtained_at)} as memory
+                    WITH m, user             
+                    MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
+                    RETURN m{
+                        .memory_id, 
+                        memory: apoc.text.replace(
+                            apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                        ), 
+                        obtained_at: toString(m.obtained_at)
+                    } as memory
                 """,
                     org_id=org_id,
                     user_id=user_id,
@@ -238,9 +265,18 @@ class Neo4jMemory(BaseGraphDB):
             else:  # Fetch all.
                 result = await tx.run(
                     """
-                    MATCH (u:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
+                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
                     MATCH (mc)-[:INCLUDES]->(m:Memory)
-                    RETURN m{.memory_id, .memory, obtained_at: toString(m.obtained_at)} as memory
+                    WITH m, user            
+                    MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
+                    RETURN m{
+                        .memory_id, 
+                        memory: apoc.text.replace(
+                            apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                        ), 
+                        obtained_at: toString(m.obtained_at)
+                    } as memory
                 """,
                     org_id=org_id,
                     user_id=user_id,
