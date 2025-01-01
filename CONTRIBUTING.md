@@ -15,6 +15,20 @@ We welcome all contributions to Memora! No contribution is too small, even fixin
 
 - **Testing and Documentation**: Write tests and add documentation for your changes. We use [MkDocs](https://www.mkdocs.org/) for documentation.
 
+- **Package Manager**: We use Poetry as our package manager. Install Poetry by following the instructions [here](https://python-poetry.org/docs/#installation).
+
+  Please DO NOT use pip or conda to install the dependencies. Instead, use Poetry:
+
+  ```
+  make install_all
+  ```
+
+  To activate the virtual environment:
+
+  ```
+  poetry shell
+  ```
+
 ## Process
 
 1. **Fork** the repository.

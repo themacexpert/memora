@@ -1,5 +1,7 @@
 ![Memora](docs/pictures/memora_banner.png)
 
+**[📚 Checkout Documentation](https://elzai.github.io/memora/)**
+
 When we interact with people 🗣️👂, we naturally remember details from past interactions 💭, feelings 😜😢, and shared experiences 🤝. That's what makes us human. **We're bringing this same ability to AI, helping it recall just like us.**
 
 ## Key Features
@@ -34,7 +36,7 @@ Before using Memora, you'll need to set up the following:
 Install Memora using pip:
 
 ```bash
-pip install memora-agent
+pip install memora-core
 ```
 
 ## **Basic Setup**

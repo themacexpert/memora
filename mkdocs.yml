@@ -1,8 +1,9 @@
 repo_url: https://github.com/ELZAI/memora/
-site_author: Jonathan Okorie
+site_author: ELZAI
 
 site_name: Memora
-site_description: Memora is an agent designed to give every personalized AI with human memory.
+site_description: Memora is an agent that aims to replicate the human memory for every personalized AI.
+site_url: https://elzai.github.io/memora/
 
 theme:
   name: material
