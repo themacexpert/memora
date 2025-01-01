@@ -234,9 +234,9 @@ print(f">>> Assistant Reply: {response.choices[0].message.content}")
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for more information on how to get involved.
+We welcome contributions! Please see our [Contributing Guidelines](https://github.com/ELZAI/memora/blob/main/CONTRIBUTING.md) for more information on how to get involved.
 
 ## License
 
-Memora is released under the [Apache License 2.0](LICENSE).
+Memora is released under the [Apache License 2.0](https://github.com/ELZAI/memora/blob/main/LICENSE).
 

@@ -1,4 +1,4 @@
-![Memora](pictures/memora_banner.png)
+![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
 
 # **Documentation**
 
@@ -30,7 +30,7 @@ Currently, Memora manages text-based memories, assisting AI in maintaining conte
 
 ## **Join Us!**
 
-We're building Memora in the open, and we'd love your 🫵 help. No contribution is too small, even fixing typos ✏️. Check out our [contributing.md](https://github.com/your-repo/contributing.md).
+We're building Memora in the open, and we'd love your 🫵 help. No contribution is too small, even fixing typos ✏️. Check out our [CONTRIBUTING.md](https://github.com/ELZAI/memora/blob/main/CONTRIBUTING.md).
 
 Let's give AI a human touch, together! 😁
 
