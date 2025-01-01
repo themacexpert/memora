@@ -6,3 +6,5 @@ test.ipynb
 # Cache
 /cache
 **/__pycache__
+
+site/
