@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "memora-core"
+version = "0.1.0"
+description = "Memora is an agent that aims to replicate the human memory for every personalized AI."
+authors = ["ELZAI <founders@elzai.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/ELZAI/memora"
+homepage = "https://github.com/ELZAI/memora"
+packages = [
+    { include = "memora" }  # Points to the internal package folder
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+shortuuid = "1.0.13"
+neo4j = "5.20.0"
+neo4j-rust-ext = "5.20.0.0"
+pydantic = "2.10.4"
+python-dotenv = "1.0.1"
+typing-extensions = "4.12.2"
+groq = "0.13.1"
+openai = "1.55.3"
+together = "1.3.10"
+qdrant-client = "1.12.1"
+fastembed = "^0.5.0"
+
+[tool.poetry.group.dev.dependencies]
+mkdocs = "^1.6.1"
+black = "^24.10.0"
+mkdocstrings-python = "^1.13.0"
+mkdocs-material = "^9.5.49"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

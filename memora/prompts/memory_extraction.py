@@ -18,6 +18,13 @@ Given an interaction between ({agent_label}) and ({user_name}).
 >>>>>>> ENTIRE INTERACTION IS BELOW <<<<<<<
 """
 
+EXTRACTION_MSG_BLOCK_FORMAT = """
+# MESSAGE BLOCK ID: {message_id}
+-------------
+{content}
+"""
+
+
 MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT = """ 
 The Current Date & Time is {day_of_week}, {current_datetime_str}. 
 Given an interaction between ({agent_label}) and ({user_name}). 
