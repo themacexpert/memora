@@ -1,4 +1,4 @@
-![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
+![Memora](pictures/memora_banner.png)
 
 # **Documentation**
 
