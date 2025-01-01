@@ -1,13 +1,9 @@
-import os
 import logging
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
-from dotenv import load_dotenv
-
 from memora.graph_db.base import BaseGraphDB
-from memora.llm_backends import GroqBackendLLM
 from memora.llm_backends.base import BaseBackendLLM
 from memora.prompts import (
     COMPARE_EXISTING_AND_NEW_MEMORIES_INPUT_TEMPLATE,
@@ -28,9 +24,6 @@ from memora.schema import (
 )
 from memora.vector_db.base import BaseVectorDB, MemorySearchScope
 
-# Load environment variables
-load_dotenv()
-
 
 class Memora:
     """
@@ -41,15 +34,8 @@ class Memora:
         self,
         vector_db: BaseVectorDB,
         graph_db: BaseGraphDB,
-        memory_search_model: BaseBackendLLM = GroqBackendLLM(
-            api_key=os.getenv("GROQ_API_KEY"), model="llama-3.1-8b-instant"
-        ),
-        extraction_model: BaseBackendLLM = GroqBackendLLM(
-            api_key=os.getenv("GROQ_API_KEY"),
-            model="llama-3.3-70b-specdec",
-            max_tokens=8000,
-            max_retries=0,
-        ),
+        memory_search_model: BaseBackendLLM,
+        extraction_model: BaseBackendLLM,
         enable_logging: bool = False,
     ):
         """
