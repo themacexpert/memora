@@ -73,8 +73,6 @@ class Memora:
         await self.extraction_model.close()
         self.logger.info("Memora resources cleaned.")
 
-
-    
     async def generate_memory_search_queries(
         self,
         message: str,
@@ -452,7 +450,7 @@ class Memora:
                                 interaction_date=current_datetime,
                                 memories=[],
                                 contrary_memories=[],
-                            )
+                            ),
                         )
                     else:
                         return await self.graph.save_interaction_with_memories(
@@ -464,7 +462,7 @@ class Memora:
                                 interaction_date=current_datetime,
                                 memories=[],
                                 contrary_memories=[],
-                            )
+                            ),
                         )
 
                 self.logger.info("Searching for existing related memories")
@@ -496,7 +494,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
-                            )
+                            ),
                         )
                     else:
                         return await self.graph.save_interaction_with_memories(
@@ -515,7 +513,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
-                            )
+                            ),
                         )
 
                 candidate_memories = [
@@ -599,7 +597,7 @@ class Memora:
                                 )
                                 for memory_tuple in new_contrary_memories
                             ],
-                        )
+                        ),
                     )
                 else:
                     return await self.graph.save_interaction_with_memories(
@@ -624,7 +622,7 @@ class Memora:
                                 )
                                 for memory_tuple in new_contrary_memories
                             ],
-                        )
+                        ),
                     )
 
             except Exception as e:

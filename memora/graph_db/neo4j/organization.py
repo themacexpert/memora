@@ -93,7 +93,7 @@ class Neo4jOrganization(BaseGraphDB):
         """
         Deletes an organization from the Neo4j graph database.
 
-        Warning: 
+        Warning:
             This operation will delete all nodes and relationships from this organization
             including users, agents, memories, interactions etc.
 

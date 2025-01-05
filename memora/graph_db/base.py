@@ -15,8 +15,8 @@ class BaseGraphDB(ABC):
     @abstractmethod
     def get_associated_vector_db(self) -> Optional[BaseVectorDB]:
         """
-        The vector database associated with the graph database, these is used inside the graph transactional blocks 
-        to ensure data consistency when handling memories across both stores (e.g., saving memories to the vector 
+        The vector database associated with the graph database, these is used inside the graph transactional blocks
+        to ensure data consistency when handling memories across both stores (e.g., saving memories to the vector
         store and creating corresponding nodes in the graph db).
         """
         pass
@@ -76,7 +76,7 @@ class BaseGraphDB(ABC):
         """
         Deletes an organization from the graph database.
 
-        Warning: 
+        Warning:
             This operation will delete all nodes and relationships from this organization
             including users, agents, memories, interactions etc.
 
@@ -316,7 +316,7 @@ class BaseGraphDB(ABC):
         org_id: str,
         agent_id: str,
         user_id: str,
-        memories_and_interaction: MemoriesAndInteraction
+        memories_and_interaction: MemoriesAndInteraction,
     ) -> Tuple[str, str]:
         """
         Creates a new interaction record with associated memories.
@@ -327,7 +327,7 @@ class BaseGraphDB(ABC):
             user_id (str): Short UUID string identifying the user.
             memories_and_interaction (MemoriesAndInteraction): Contains both the interaction and the associated memories.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
@@ -365,7 +365,7 @@ class BaseGraphDB(ABC):
             interaction_id (str): Short UUID string identifying the interaction to update.
             updated_memories_and_interaction (MemoriesAndInteraction): Contains both the updated interaction and the associated new memories.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
@@ -463,7 +463,7 @@ class BaseGraphDB(ABC):
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction to delete.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
         pass
@@ -481,7 +481,7 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user whose interactions should be deleted
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
         pass
@@ -635,7 +635,7 @@ class BaseGraphDB(ABC):
             user_id (str): Short UUID string identifying the user
             memory_id (str): UUID string identifying the memory to delete
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memory is also deleted there for data consistency.
         """
         pass
@@ -653,7 +653,7 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
         pass

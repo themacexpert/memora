@@ -11,11 +11,19 @@ from .memory import Neo4jMemory
 from ...vector_db.base import BaseVectorDB
 from typing import Optional
 
+
 class Neo4jGraphInterface(
     Neo4jOrganization, Neo4jAgent, Neo4jUser, Neo4jInteraction, Neo4jMemory
 ):
 
-    def __init__(self, uri: str, username: str, password: str, database: str, associated_vector_db: Optional[BaseVectorDB]=None):
+    def __init__(
+        self,
+        uri: str,
+        username: str,
+        password: str,
+        database: str,
+        associated_vector_db: Optional[BaseVectorDB] = None,
+    ):
         """
         A unified interface for interacting with the Neo4j graph database.
 
@@ -50,8 +58,8 @@ class Neo4jGraphInterface(
     @override
     def get_associated_vector_db(self) -> Optional[BaseVectorDB]:
         """
-        The vector database associated with the graph database, these is used inside the graph transactional blocks 
-        to ensure data consistency when handling memories across both stores (e.g., saving memories to the vector 
+        The vector database associated with the graph database, these is used inside the graph transactional blocks
+        to ensure data consistency when handling memories across both stores (e.g., saving memories to the vector
         store and creating corresponding nodes in the graph db).
         """
         return self.associated_vector_db
@@ -126,4 +134,3 @@ class Neo4jGraphInterface(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(create_constraints_and_indexes)
-

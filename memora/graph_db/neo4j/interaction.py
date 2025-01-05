@@ -184,7 +184,7 @@ class Neo4jInteraction(BaseGraphDB):
         org_id: str,
         agent_id: str,
         user_id: str,
-        memories_and_interaction: MemoriesAndInteraction
+        memories_and_interaction: MemoriesAndInteraction,
     ) -> Tuple[str, str]:
         """
         Creates a new interaction record with associated memories.
@@ -195,7 +195,7 @@ class Neo4jInteraction(BaseGraphDB):
             user_id (str): Short UUID string identifying the user.
             memories_and_interaction (MemoriesAndInteraction): Contains both the interaction and the associated memories.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
@@ -279,7 +279,9 @@ class Neo4jInteraction(BaseGraphDB):
                 )
 
             if new_memory_ids or new_contrary_memory_ids:
-                if self.associated_vector_db: # If the graph database is associated with a vector database
+                if (
+                    self.associated_vector_db
+                ):  # If the graph database is associated with a vector database
                     # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
                     await self.associated_vector_db.add_memories(
                         org_id=org_id,
@@ -332,7 +334,7 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_id (str): Short UUID string identifying the interaction to update.
             updated_memories_and_interaction (MemoriesAndInteraction): Contains both the updated interaction and the associated new memories.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
@@ -463,7 +465,9 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if new_memory_ids or new_contrary_memory_ids:
-                if self.associated_vector_db: # If the graph database is associated with a vector database
+                if (
+                    self.associated_vector_db
+                ):  # If the graph database is associated with a vector database
                     # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
                     await self.associated_vector_db.add_memories(
                         org_id=org_id,
@@ -681,7 +685,7 @@ class Neo4jInteraction(BaseGraphDB):
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction to delete.
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
@@ -712,9 +716,13 @@ class Neo4jInteraction(BaseGraphDB):
                 interaction_id=interaction_id,
             )
 
-            if self.associated_vector_db:  # If the graph database is associated with a vector database
+            if (
+                self.associated_vector_db
+            ):  # If the graph database is associated with a vector database
                 # Delete memories from vector DB.
-                await self.associated_vector_db.delete_memories(interaction_memories_ids)
+                await self.associated_vector_db.delete_memories(
+                    interaction_memories_ids
+                )
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -734,7 +742,7 @@ class Neo4jInteraction(BaseGraphDB):
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user whose interactions should be deleted
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
@@ -753,8 +761,12 @@ class Neo4jInteraction(BaseGraphDB):
                 user_id=user_id,
             )
 
-            if self.associated_vector_db:  # If the graph database is associated with a vector database
-                await self.associated_vector_db.delete_all_user_memories(org_id, user_id)
+            if (
+                self.associated_vector_db
+            ):  # If the graph database is associated with a vector database
+                await self.associated_vector_db.delete_all_user_memories(
+                    org_id, user_id
+                )
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS

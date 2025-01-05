@@ -139,7 +139,7 @@ class Neo4jMemory(BaseGraphDB):
                 + obtained_at: ISO format timestamp of when the memory was obtained
         """
 
-        async def get_memory_tx(tx): 
+        async def get_memory_tx(tx):
             result = await tx.run(
                 """
                 MATCH (m:Memory {org_id: $org_id, user_id: $user_id, memory_id: $memory_id})
@@ -305,7 +305,7 @@ class Neo4jMemory(BaseGraphDB):
             user_id (str): Short UUID string identifying the user
             memory_id (str): UUID string identifying the memory to delete
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memory is also deleted there for data consistency.
         """
 
@@ -320,7 +320,9 @@ class Neo4jMemory(BaseGraphDB):
                 memory_id=memory_id,
             )
 
-            if self.associated_vector_db:  # If the graph database is associated with a vector database
+            if (
+                self.associated_vector_db
+            ):  # If the graph database is associated with a vector database
                 # Delete memory from vector DB.
                 await self.associated_vector_db.delete_memory(memory_id)
 
@@ -342,7 +344,7 @@ class Neo4jMemory(BaseGraphDB):
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
 
-        Note: 
+        Note:
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
@@ -357,9 +359,13 @@ class Neo4jMemory(BaseGraphDB):
                 user_id=user_id,
             )
 
-            if self.associated_vector_db:  # If the graph database is associated with a vector database
+            if (
+                self.associated_vector_db
+            ):  # If the graph database is associated with a vector database
                 # Delete all memories from vector DB.
-                await self.associated_vector_db.delete_all_user_memories(org_id, user_id)
+                await self.associated_vector_db.delete_all_user_memories(
+                    org_id, user_id
+                )
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
