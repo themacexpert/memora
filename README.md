@@ -16,12 +16,12 @@ When we interact with people 🗣️👂, we naturally remember details from pas
 Before using Memora, you'll need to set up the following:
 
 1. **Neo4j Database**  
-     - Option A: [Install Neo4j locally](https://neo4j.com/docs/operations-manual/current/installation/)  
-     - Option B: Use [Neo4j AuraDB](https://neo4j.com/cloud/platform/aura-graph-database/) (managed cloud solution)  
+     - Option A: [Install Neo4j locally (Free)](https://neo4j.com/docs/operations-manual/current/installation/)  
+     - Option B: Use [Neo4j AuraDB Cloud (Free Option available)](https://neo4j.com/cloud/platform/aura-graph-database/)
 
 2. **Qdrant Vector Database**  
-     - Option A: [Install Qdrant locally](https://qdrant.tech/documentation/quick-start/)  
-     - Option B: Use [Qdrant Cloud](https://qdrant.tech/documentation/cloud/) (managed solution)  
+     - Option A: [Install Qdrant locally (Free)](https://qdrant.tech/documentation/quick-start/)  
+     - Option B: Use [Qdrant Cloud (Free Option available)](https://qdrant.tech/documentation/cloud/) 
 
 3. **LLM Provider API Key**  
    Choose one of the following providers and obtain an API key:  

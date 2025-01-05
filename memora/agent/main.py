@@ -47,12 +47,18 @@ class Memora:
             memory_search_model (BaseBackendLLM): Model for memory search queries and Optional final filtering.
             extraction_model (BaseBackendLLM): Model for memory extraction operations.
             enable_logging (bool): Whether to enable console logging.
+
+        Note:
+            The graph database will be associated with the vector database.
         """
 
         self.memory_search_model = memory_search_model
         self.extraction_model = extraction_model
         self.vector_db = vector_db
         self.graph = graph_db
+
+        # Associate the vector database with the graph database.
+        self.graph.associated_vector_db = self.vector_db
 
         self.logger = logging.getLogger(__name__)
         if enable_logging:
@@ -67,6 +73,8 @@ class Memora:
         await self.extraction_model.close()
         self.logger.info("Memora resources cleaned.")
 
+
+    
     async def generate_memory_search_queries(
         self,
         message: str,
@@ -444,8 +452,7 @@ class Memora:
                                 interaction_date=current_datetime,
                                 memories=[],
                                 contrary_memories=[],
-                            ),
-                            vector_db_add_memories_fn=None,  # No need to add memories since there are none.
+                            )
                         )
                     else:
                         return await self.graph.save_interaction_with_memories(
@@ -457,8 +464,7 @@ class Memora:
                                 interaction_date=current_datetime,
                                 memories=[],
                                 contrary_memories=[],
-                            ),
-                            vector_db_add_memories_fn=None,  # No need to add memories since there are none.
+                            )
                         )
 
                 self.logger.info("Searching for existing related memories")
@@ -490,8 +496,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
-                            ),
-                            vector_db_add_memories_fn=self.vector_db.add_memories,
+                            )
                         )
                     else:
                         return await self.graph.save_interaction_with_memories(
@@ -510,8 +515,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
-                            ),
-                            vector_db_add_memories_fn=self.vector_db.add_memories,
+                            )
                         )
 
                 candidate_memories = [
@@ -595,8 +599,7 @@ class Memora:
                                 )
                                 for memory_tuple in new_contrary_memories
                             ],
-                        ),
-                        vector_db_add_memories_fn=self.vector_db.add_memories,
+                        )
                     )
                 else:
                     return await self.graph.save_interaction_with_memories(
@@ -621,8 +624,7 @@ class Memora:
                                 )
                                 for memory_tuple in new_contrary_memories
                             ],
-                        ),
-                        vector_db_add_memories_fn=self.vector_db.add_memories,
+                        )
                     )
 
             except Exception as e:

@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "memora-core"
-version = "0.1.4"
+version = "0.1.5"
 description = "Memora is an agent that aims to replicate the human memory for every personalized AI."
 authors = ["ELZAI <founders@elzai.com>"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/ELZAI/memora"
 homepage = "https://github.com/ELZAI/memora"
+changelog = "https://github.com/ELZAI/memora/blob/main/CHANGELOG.md"
+documentation = "https://elzai.github.io/memora/"
 packages = [
     { include = "memora" }  # Points to the internal package folder
 ]

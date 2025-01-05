@@ -131,6 +131,8 @@ nav:
       - Search: api/prompts/search.md
       - Filter: api/prompts/filter.md
 
+  - Change Log: changelog.md
+
 extra:
   social:
     - icon: fontawesome/solid/globe

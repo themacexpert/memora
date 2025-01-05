@@ -1,6 +1,6 @@
 from typing_extensions import override
 import neo4j
-from typing import Dict, List, Optional, Callable, Awaitable
+from typing import Dict, List, Optional
 
 from ..base import BaseGraphDB
 
@@ -296,7 +296,6 @@ class Neo4jMemory(BaseGraphDB):
         org_id: str,
         user_id: str,
         memory_id: str,
-        vector_db_delete_memory_by_id_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes a specific memory.
@@ -305,8 +304,9 @@ class Neo4jMemory(BaseGraphDB):
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
             memory_id (str): UUID string identifying the memory to delete
-            vector_db_delete_memory_by_id_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_memory`),
-                called in the graph transaction block to ensure data consistency.
+
+        Note: 
+            If the graph database is associated with a vector database, the memory is also deleted there for data consistency.
         """
 
         async def delete_memory_tx(tx):
@@ -320,8 +320,9 @@ class Neo4jMemory(BaseGraphDB):
                 memory_id=memory_id,
             )
 
-            # Delete memory from vector DB.
-            await vector_db_delete_memory_by_id_fn(memory_id)
+            if self.associated_vector_db:  # If the graph database is associated with a vector database
+                # Delete memory from vector DB.
+                await self.associated_vector_db.delete_memory(memory_id)
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -333,7 +334,6 @@ class Neo4jMemory(BaseGraphDB):
         self,
         org_id: str,
         user_id: str,
-        vector_db_delete_all_user_memories_fn: Callable[..., Awaitable[None]],
     ) -> None:
         """
         Deletes all memories of a specific user.
@@ -341,8 +341,9 @@ class Neo4jMemory(BaseGraphDB):
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
-            vector_db_delete_all_user_memories_fn (Callable[..., Awaitable[None]]): Coroutine (`BaseVectorDB.delete_all_user_memories`),
-                called in the graph transaction block to ensure data consistency.
+
+        Note: 
+            If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
         async def delete_all_memories_tx(tx):
@@ -356,8 +357,9 @@ class Neo4jMemory(BaseGraphDB):
                 user_id=user_id,
             )
 
-            # Delete all memories from vector DB.
-            await vector_db_delete_all_user_memories_fn(org_id, user_id)
+            if self.associated_vector_db:  # If the graph database is associated with a vector database
+                # Delete all memories from vector DB.
+                await self.associated_vector_db.delete_all_user_memories(org_id, user_id)
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
