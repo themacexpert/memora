@@ -2,6 +2,10 @@
 
 **[📚 Checkout Documentation](https://elzai.github.io/memora/)**
 
+> [!IMPORTANT]
+> **This project is NOT associated with any cryptocurrency, token, or related offerings on X (Twitter) or any other platform.**  
+> If you see any claims suggesting otherwise, they are fake and unrelated to this project. Please report such claims to help protect others. Thank you!
+
 When we interact with people 🗣️👂, we naturally remember details from past interactions 💭, feelings 😜😢, and shared experiences 🤝. That's what makes us human. **We're bringing this same ability to AI, helping it recall just like us.**
 
 ## Key Features
