@@ -21,36 +21,48 @@ class Neo4jInteraction(BaseGraphDB):
     ) -> None:
         """Add messages to an interaction from the very top, linking the first message to the interaction."""
 
+        # Truncate messages from the first message to the end.
         await tx.run(
             """
-                    MATCH (interaction:Interaction {
-                        org_id: $org_id, 
-                        user_id: $user_id, 
-                        interaction_id: $interaction_id
-                    })
-
-                    CREATE (msg1:MessageBlock {msg_position: 0, role: $messages[0].role, content: $messages[0].content})
-                    CREATE (interaction)-[:FIRST_MESSAGE]->(msg1)
-
-                    // Step 1: Create the remaining message nodes and collect them in a list.
-                    WITH msg1
-                    UNWIND RANGE(1, SIZE($messages) - 1) AS idx
-                    CREATE (msg:MessageBlock {msg_position: idx, role: $messages[idx].role, content: $messages[idx].content})
-
-                    // Step 2: Create a chain with the messages all connected via IS_NEXT from the first message.
-                    WITH msg1, COLLECT(msg) AS nodeList
-                    WITH [msg1] + nodeList AS nodeList
-
-                    UNWIND RANGE(1, SIZE(nodeList) - 1) AS idx
-                    WITH nodeList[idx] AS currentNode, nodeList[idx - 1] AS previousNode
-                    CREATE (previousNode)-[:IS_NEXT]->(currentNode)
-
-                """,
+                MATCH (interaction: Interaction {org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                DETACH DELETE m
+            """,
             org_id=org_id,
             user_id=user_id,
             interaction_id=interaction_id,
-            messages=messages,
         )
+
+        if messages:  # Called only if there are messages to be added.
+            await tx.run(
+                """
+                        MATCH (interaction:Interaction {
+                            org_id: $org_id, 
+                            user_id: $user_id, 
+                            interaction_id: $interaction_id
+                        })
+
+                        CREATE (msg1:MessageBlock {msg_position: 0, role: $messages[0].role, content: $messages[0].content})
+                        CREATE (interaction)-[:FIRST_MESSAGE]->(msg1)
+
+                        // Step 1: Create the remaining message nodes and collect them in a list.
+                        WITH msg1
+                        UNWIND RANGE(1, SIZE($messages) - 1) AS idx
+                        CREATE (msg:MessageBlock {msg_position: idx, role: $messages[idx].role, content: $messages[idx].content})
+
+                        // Step 2: Create a chain with the messages all connected via IS_NEXT from the first message.
+                        WITH msg1, COLLECT(msg) AS nodeList
+                        WITH [msg1] + nodeList AS nodeList
+
+                        UNWIND RANGE(1, SIZE(nodeList) - 1) AS idx
+                        WITH nodeList[idx] AS currentNode, nodeList[idx - 1] AS previousNode
+                        CREATE (previousNode)-[:IS_NEXT]->(currentNode)
+
+                    """,
+                org_id=org_id,
+                user_id=user_id,
+                interaction_id=interaction_id,
+                messages=messages,
+            )
 
     async def _append_messages_to_interaction(
         self,
@@ -246,6 +258,12 @@ class Neo4jInteraction(BaseGraphDB):
                 interaction_date=memories_and_interaction.interaction_date.isoformat(),
             )
 
+            if not memories_and_interaction.interaction:
+                return (
+                    interaction_id,
+                    memories_and_interaction.interaction_date.isoformat(),
+                )
+
             # Add the messages to the interaction.
             await self._add_messages_to_interaction_from_top(
                 tx,
@@ -365,12 +383,26 @@ class Neo4jInteraction(BaseGraphDB):
         )  # if there are no existing messages, it means we can add from the top.
 
         for i in range(len(existing_messages)):
+
+            # When the updated interaction is shorter than the existing interaction.
+            if i == len(updated_memories_and_interaction.interaction):
+
+                # When the updated interaction is empty, `truncate_from = 0`, will lead to deleting all existing messages in that interaction and replace with update interaction.
+                if i == 0:
+                    truncate_from = 0
+
+                # Will eventually lead just keeping the updated interaction, with the existing messages below that point truncated.
+                else:
+                    truncate_from = i - 1
+
+                break
+
             if (
-                existing_messages[i]["role"]
-                != updated_memories_and_interaction.interaction[i]["role"]
+                existing_messages[i].get("role")
+                != updated_memories_and_interaction.interaction[i].get("role")
             ) or (
-                existing_messages[i]["content"]
-                != updated_memories_and_interaction.interaction[i]["content"]
+                existing_messages[i].get("content")
+                != updated_memories_and_interaction.interaction[i].get("content")
             ):
                 truncate_from = i
                 break

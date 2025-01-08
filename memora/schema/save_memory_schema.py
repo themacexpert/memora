@@ -21,6 +21,7 @@ class MemoriesAndInteraction(BaseModel):
     """
 
     interaction: list[dict[str, str]] = Field(
+        default=[],
         description="The messages in the interaction [{'role': 'user', 'content': 'hello'}, ...]"
     )
     interaction_date: datetime = Field(
@@ -28,8 +29,10 @@ class MemoriesAndInteraction(BaseModel):
         description="The date and time the interaction occurred.",
     )
     memories: list[MemoryToStore] = Field(
+        default=[],
         description="The memories extracted from the interaction with their source messages position."
     )
     contrary_memories: list[ContraryMemoryToStore] = Field(
+        default=[],
         description="The memory extracted from the interaction with the above but also the memory id of the existing memory they contradicted."
     )

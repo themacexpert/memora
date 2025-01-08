@@ -494,6 +494,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
+                                contrary_memories=[],
                             ),
                         )
                     else:
@@ -513,6 +514,7 @@ class Memora:
                                         candidate_memories_msg_sources,
                                     )
                                 ],
+                                contrary_memories=[],
                             ),
                         )
 

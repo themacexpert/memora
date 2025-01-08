@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),  
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## **[0.1.6] - 2025-01-08**
+### **Fixed**
+- **Contrary Memories Validation**:  
+  - Fixed a bug related to the validation error for `contrary_memories` when saving or updating an interaction.
+- **Weird Index Error**:
+  - Fixed an index error that occurred when updating an interaction to a shorter and different one.
+
 ## **[0.1.5] - 2025-01-05**
 ### **Added**
 - **Vector-Graph Database Association**:  
