@@ -37,15 +37,15 @@ Before using Memora, you'll need to set up the following:
 4. **Optional: Rust/Cargo Setup**  
    The `neo4j-rust-ext` package may require Rust/Cargo for building from source if pre-built wheels are unavailable or fail to install on your system.  
 
-   - **For Unix-like systems**:  
-     Run the following command in your terminal:  
-     ```console
-     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-     ```
-   - **For other platforms or installation methods**:  
-     Refer to the [Rust installation guide](https://www.rust-lang.org/tools/install).  
+    - **For Unix-like systems**:  
+        Run the following command in your terminal:  
+        ```console
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        ```
+    - **For other platforms or installation methods**:  
+        Refer to the [Rust installation guide](https://www.rust-lang.org/tools/install).  
 
-   **Note:** This setup is necessary if you encounter build errors related to the `neo4j-rust-ext` or `py-rust-stemmers` package.
+    **Note:** This setup is necessary if you encounter build errors related to the `neo4j-rust-ext` or `py-rust-stemmers` package.
 
 
 ## **Installation**
