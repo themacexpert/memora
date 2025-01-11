@@ -34,13 +34,19 @@ Before using Memora, you'll need to set up the following:
      - [Together AI](https://www.together.ai/)  
      - [Groq](https://groq.com/)
 
-4. **Cargo/Rust Installation**  
-   Cargo installation is required to build some packages locally
-     - See [Rust website](https://www.rust-lang.org/learn/get-started) for more details.
-     Run the following command in your terminal to install Rust:
+4. **Optional: Rust/Cargo Setup**  
+   The `neo4j-rust-ext` package may require Rust/Cargo for building from source if pre-built wheels are unavailable or fail to install on your system.  
+
+   - **For Unix-like systems**:  
+     Run the following command in your terminal:  
      ```console
      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
      ```
+   - **For other platforms or installation methods**:  
+     Refer to the [Rust installation guide](https://www.rust-lang.org/tools/install).  
+
+   **Note:** This setup is necessary if you encounter build errors related to the `neo4j-rust-ext` or `py-rust-stemmers` package.
+
 
 ## **Installation**
 
