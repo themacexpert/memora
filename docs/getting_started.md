@@ -30,6 +30,7 @@ Before using Memora, you'll need to set up the following:
 
    **Note:** This setup is necessary if you encounter build errors related to the `neo4j-rust-ext` or `py-rust-stemmers` package.
 
+
 ## **Installation**
 
 Install Memora using pip:
