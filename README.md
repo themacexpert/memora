@@ -1,5 +1,17 @@
 ![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
 
+<p align="center">
+    <a href="https://pepy.tech/projects/memora-core">
+        <img src="https://static.pepy.tech/badge/memora-core" alt="Memora PyPI Downloads">
+    </a>
+    <a href="https://pypi.org/project/memora-core" target="_blank">
+        <img src="https://img.shields.io/pypi/v/memora-core?color=%2334D058&label=pypi%20package" alt="Package version">
+    </a>
+    <a href="https://github.com/elzai/memora/blob/main/LICENSE">    
+        <img src="https://img.shields.io/badge/License-Apache%202.0-ac878a?style=flat-square" alt="License">
+    </a>
+</p>
+
 **[📚 Checkout Documentation](https://elzai.github.io/memora/)**
 
 > [!IMPORTANT]
