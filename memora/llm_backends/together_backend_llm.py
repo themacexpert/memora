@@ -12,8 +12,8 @@ class TogetherBackendLLM(BaseBackendLLM):
 
     def __init__(
         self,
-        api_key: str, 
-        model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo", 
+        api_key: str,
+        model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         temperature: float = 0.7,
         top_p: float = 1,
         max_tokens: int = 1024,
