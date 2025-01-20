@@ -10,3 +10,5 @@
 
 site/
 dist/
+
+.ruff_cache
