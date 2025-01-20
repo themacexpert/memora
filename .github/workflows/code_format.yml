@@ -25,5 +25,6 @@ jobs:
 
       # Run isort to check import sorting
       - name: Run isort
-        uses: isort/isort-action@master
-        run: isort --check-only --diff --profile black ./memora
+        run: |
+          pip install isort
+          isort --check-only --diff --profile black ./memora
