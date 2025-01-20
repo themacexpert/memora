@@ -376,10 +376,12 @@ class Memora:
                     self.logger.debug(
                         f"Fetching previously extracted memories for interaction {interaction_id}"
                     )
-                    previously_extracted_memories: List[Dict[str, str]] = await self.graph.get_all_interaction_memories(
+                    previously_extracted_memories: List[Dict[str, str]] = (
+                        await self.graph.get_all_interaction_memories(
                             org_id, user_id, interaction_id
                         )
-                    
+                    )
+
                     self.logger.debug(
                         f"Found {len(previously_extracted_memories)} previously extracted memories"
                     )

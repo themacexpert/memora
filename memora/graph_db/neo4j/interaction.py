@@ -48,10 +48,10 @@ class Neo4jInteraction(BaseGraphDB):
                     CREATE (previousNode)-[:IS_NEXT]->(currentNode)
 
                 """,
-            org_id=org_id,
-            user_id=user_id,
-            interaction_id=interaction_id,
-            messages=messages,
+                org_id=org_id,
+                user_id=user_id,
+                interaction_id=interaction_id,
+                messages=messages,
             )
 
     async def _append_messages_to_interaction(
@@ -93,7 +93,7 @@ class Neo4jInteraction(BaseGraphDB):
         org_id: str,
         user_id: str,
         interaction_id: str,
-        truncation_point_inclusive: int
+        truncation_point_inclusive: int,
     ) -> None:
         """
         Will truncate every message in an interaction below the given truncation point.
@@ -106,11 +106,11 @@ class Neo4jInteraction(BaseGraphDB):
             ValueError: When `truncation_point_inclusive` is < 0 (Less than Zero).
         """
 
-        if truncation_point_inclusive == 0: 
+        if truncation_point_inclusive == 0:
             # Delete every message in the interaction:
             await tx.run(
-                f"""
-                MATCH (interaction: Interaction {{org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id}})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                """
+                MATCH (interaction: Interaction {org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
                 DETACH DELETE m
             """,
                 org_id=org_id,
@@ -132,7 +132,9 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
         else:
-            raise ValueError("`truncation_point_inclusive` should be > 0 (Greater than Zero).")
+            raise ValueError(
+                "`truncation_point_inclusive` should be > 0 (Greater than Zero)."
+            )
 
     async def _add_memories_with_their_source_links(
         self,
@@ -420,37 +422,45 @@ class Neo4jInteraction(BaseGraphDB):
 
             # Case 1: Empty updated interaction - delete all existing messages
             if updated_interaction_length == 0:
-                await self._truncate_interaction_message_below_point(tx, org_id, user_id, interaction_id, truncation_point_inclusive=0)
+                await self._truncate_interaction_message_below_point(
+                    tx, org_id, user_id, interaction_id, truncation_point_inclusive=0
+                )
 
             # Case 2: Empty existing interaction - add all new messages from the top
             elif existing_interaction_length == 0:
                 await self._add_messages_to_interaction_from_top(
-                        tx,
-                        org_id,
-                        user_id,
-                        interaction_id,
-                        updated_memories_and_interaction.interaction,
-                    )
+                    tx,
+                    org_id,
+                    user_id,
+                    interaction_id,
+                    updated_memories_and_interaction.interaction,
+                )
 
             # Case 3: Both interactions have messages - compare and update
-            else: 
+            else:
                 # Find first point of difference
                 truncate_from = -1
-                for i in range(min(existing_interaction_length, updated_interaction_length)):
+                for i in range(
+                    min(existing_interaction_length, updated_interaction_length)
+                ):
                     if (
                         existing_messages[i].get("role")
                         != updated_memories_and_interaction.interaction[i].get("role")
                     ) or (
                         existing_messages[i].get("content")
-                        != updated_memories_and_interaction.interaction[i].get("content")
+                        != updated_memories_and_interaction.interaction[i].get(
+                            "content"
+                        )
                     ):
                         truncate_from = i
                         break
 
                 # If no differences found in prefix messages, but updated interaction is shorter
-                if truncate_from == -1 and updated_interaction_length < existing_interaction_length:
+                if (
+                    truncate_from == -1
+                    and updated_interaction_length < existing_interaction_length
+                ):
                     truncate_from = updated_interaction_length
-
 
                 # Handle different cases based on where the difference was found
                 if truncate_from == -1:
@@ -465,7 +475,13 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from == 0:
                     # Complete replacement needed
-                    await self._truncate_interaction_message_below_point(tx, org_id, user_id, interaction_id, truncation_point_inclusive=0)
+                    await self._truncate_interaction_message_below_point(
+                        tx,
+                        org_id,
+                        user_id,
+                        interaction_id,
+                        truncation_point_inclusive=0,
+                    )
                     await self._add_messages_to_interaction_from_top(
                         tx,
                         org_id,
@@ -476,7 +492,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from > 0:
                     # Partial replacement needed
-                    await self._truncate_interaction_message_below_point(tx, org_id, user_id, interaction_id, truncate_from)
+                    await self._truncate_interaction_message_below_point(
+                        tx, org_id, user_id, interaction_id, truncate_from
+                    )
                     await self._append_messages_to_interaction(
                         tx,
                         org_id,
@@ -530,7 +548,7 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if new_memory_ids or new_contrary_memory_ids:
-                if self.associated_vector_db:  
+                if self.associated_vector_db:
                     # If the graph database is associated with a vector database
                     # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
                     await self.associated_vector_db.add_memories(
