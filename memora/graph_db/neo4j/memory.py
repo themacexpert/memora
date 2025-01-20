@@ -1,6 +1,7 @@
-from typing_extensions import override
-import neo4j
 from typing import Dict, List, Optional
+
+import neo4j
+from typing_extensions import override
 
 from ..base import BaseGraphDB
 

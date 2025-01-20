@@ -1,0 +1,30 @@
+name: Python Code Format
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout code
+      - uses: actions/checkout@v4
+
+      # Run Black to check formatting
+      - name: Run Black
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "./memora"
+      
+      # Run Ruff to check code quality and linting
+      - name: Run Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          # Optional: Specify any ruff-specific configurations if needed
+          args: "check ./memora"
+
+      # Run isort to check import sorting
+      - name: Run isort
+        uses: isort/isort-action@master
+        with:
+          args: "--check-only --diff --settings-path pyproject.toml ./memora"

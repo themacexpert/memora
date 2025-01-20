@@ -1,6 +1,7 @@
-import shortuuid
-import neo4j
 from typing import Dict, List, Optional
+
+import neo4j
+import shortuuid
 from typing_extensions import override
 
 from ..base import BaseGraphDB

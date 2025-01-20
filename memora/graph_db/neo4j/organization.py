@@ -1,10 +1,10 @@
-from typing_extensions import override
-import shortuuid
+from typing import Dict
+
 import neo4j
+import shortuuid
+from typing_extensions import override
 
 from ..base import BaseGraphDB
-
-from typing import Dict
 
 
 class Neo4jOrganization(BaseGraphDB):
