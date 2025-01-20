@@ -31,8 +31,7 @@ class Memora:
     """
 
     def __init__(
-        self, vector_db: BaseVectorDB, graph_db: BaseGraphDB, memory_search_model: BaseBackendLLM, extraction_model: BaseBackendLLM, enable_logging: bool = False,
-    ):
+        self, vector_db: BaseVectorDB, graph_db: BaseGraphDB, memory_search_model: BaseBackendLLM, extraction_model: BaseBackendLLM, enable_logging: bool = False,):
         """
         Initialize the Memora instance.
 
@@ -69,10 +68,7 @@ class Memora:
         self.logger.info("Memora resources cleaned.")
 
     async def generate_memory_search_queries(
-        self,
-        message: str,
-        preceding_messages_for_context: List[Dict[str, str]] = [],
-        current_datetime: datetime = datetime.now(),
+        self,message: str,preceding_messages_for_context: List[Dict[str, str]] = [],current_datetime: datetime = datetime.now(),
     ) -> List[str]:
         """
         Generate memory search queries based on the given message and context.
