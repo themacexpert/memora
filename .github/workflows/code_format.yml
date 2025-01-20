@@ -27,4 +27,5 @@ jobs:
       - name: Run isort
         uses: isort/isort-action@master
         with:
-          args: "--check-only --diff --settings-path pyproject.toml ./memora"
+          sort-paths: "./memora"
+          configuration: "./pyproject.toml"
