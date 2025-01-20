@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Type, Union
 
-from pydantic import BaseModel
 from together import AsyncTogether
 from typing_extensions import override
+from pydantic import BaseModel
 
 from .base import BaseBackendLLM
 
