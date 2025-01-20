@@ -1,0 +1,25 @@
+repos:
+  - repo: local
+    hooks:
+      # Run isort to sort imports first
+      - id: isort
+        name: isort (python)
+        entry: isort
+        language: system
+        types: [python]
+        args: ["--profile", "black"]
+
+      # Run Black code formatter
+      - id: black
+        name: black
+        entry: black ./memora
+        language: system
+        types: [python]
+
+      # Run Ruff Linter last to check for code issues
+      - id: ruff
+        name: ruff
+        entry: ruff check ./memora
+        language: system
+        types: [python]
+        args: [--fix]

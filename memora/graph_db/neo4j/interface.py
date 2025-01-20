@@ -1,15 +1,15 @@
+from typing import Optional
+
 import neo4j
 from neo4j import AsyncGraphDatabase
 from typing_extensions import override
 
-from .organization import Neo4jOrganization
+from ...vector_db.base import BaseVectorDB
 from .agent import Neo4jAgent
-from .user import Neo4jUser
 from .interaction import Neo4jInteraction
 from .memory import Neo4jMemory
-
-from ...vector_db.base import BaseVectorDB
-from typing import Optional
+from .organization import Neo4jOrganization
+from .user import Neo4jUser
 
 
 class Neo4jGraphInterface(
