@@ -31,12 +31,7 @@ class Memora:
     """
 
     def __init__(
-        self,
-        vector_db: BaseVectorDB,
-        graph_db: BaseGraphDB,
-        memory_search_model: BaseBackendLLM,
-        extraction_model: BaseBackendLLM,
-        enable_logging: bool = False,
+        self, vector_db: BaseVectorDB, graph_db: BaseGraphDB, memory_search_model: BaseBackendLLM, extraction_model: BaseBackendLLM, enable_logging: bool = False,
     ):
         """
         Initialize the Memora instance.
