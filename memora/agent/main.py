@@ -381,6 +381,7 @@ class Memora:
                             org_id, user_id, interaction_id
                         )
                     )
+
                     self.logger.debug(
                         f"Found {len(previously_extracted_memories)} previously extracted memories"
                     )

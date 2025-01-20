@@ -22,43 +22,32 @@ class Neo4jInteraction(BaseGraphDB):
     ) -> None:
         """Add messages to an interaction from the very top, linking the first message to the interaction."""
 
-        # Truncate messages from the first message to the end.
-        await tx.run(
-            """
-                MATCH (interaction: Interaction {org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
-                DETACH DELETE m
-            """,
-            org_id=org_id,
-            user_id=user_id,
-            interaction_id=interaction_id,
-        )
-
         if messages:  # Called only if there are messages to be added.
             await tx.run(
                 """
-                        MATCH (interaction:Interaction {
-                            org_id: $org_id, 
-                            user_id: $user_id, 
-                            interaction_id: $interaction_id
-                        })
+                    MATCH (interaction:Interaction {
+                        org_id: $org_id, 
+                        user_id: $user_id, 
+                        interaction_id: $interaction_id
+                    })
 
-                        CREATE (msg1:MessageBlock {msg_position: 0, role: $messages[0].role, content: $messages[0].content})
-                        CREATE (interaction)-[:FIRST_MESSAGE]->(msg1)
+                    CREATE (msg1:MessageBlock {msg_position: 0, role: $messages[0].role, content: $messages[0].content})
+                    CREATE (interaction)-[:FIRST_MESSAGE]->(msg1)
 
-                        // Step 1: Create the remaining message nodes and collect them in a list.
-                        WITH msg1
-                        UNWIND RANGE(1, SIZE($messages) - 1) AS idx
-                        CREATE (msg:MessageBlock {msg_position: idx, role: $messages[idx].role, content: $messages[idx].content})
+                    // Step 1: Create the remaining message nodes and collect them in a list.
+                    WITH msg1
+                    UNWIND RANGE(1, SIZE($messages) - 1) AS idx
+                    CREATE (msg:MessageBlock {msg_position: idx, role: $messages[idx].role, content: $messages[idx].content})
 
-                        // Step 2: Create a chain with the messages all connected via IS_NEXT from the first message.
-                        WITH msg1, COLLECT(msg) AS nodeList
-                        WITH [msg1] + nodeList AS nodeList
+                    // Step 2: Create a chain with the messages all connected via IS_NEXT from the first message.
+                    WITH msg1, COLLECT(msg) AS nodeList
+                    WITH [msg1] + nodeList AS nodeList
 
-                        UNWIND RANGE(1, SIZE(nodeList) - 1) AS idx
-                        WITH nodeList[idx] AS currentNode, nodeList[idx - 1] AS previousNode
-                        CREATE (previousNode)-[:IS_NEXT]->(currentNode)
+                    UNWIND RANGE(1, SIZE(nodeList) - 1) AS idx
+                    WITH nodeList[idx] AS currentNode, nodeList[idx - 1] AS previousNode
+                    CREATE (previousNode)-[:IS_NEXT]->(currentNode)
 
-                    """,
+                """,
                 org_id=org_id,
                 user_id=user_id,
                 interaction_id=interaction_id,
@@ -97,6 +86,55 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_id=interaction_id,
             messages=messages,
         )
+
+    async def _truncate_interaction_message_below_point(
+        self,
+        tx,
+        org_id: str,
+        user_id: str,
+        interaction_id: str,
+        truncation_point_inclusive: int,
+    ) -> None:
+        """
+        Will truncate every message in an interaction below the given truncation point.
+
+        Note:
+            - `truncation_point_inclusive` is zero indexed and inclusive so `truncation_point_inclusive = n` will start deleting from the message at `nth` position.
+            - Setting `truncation_point_inclusize` to 0 will delete all messages of the interaction.
+
+        Raises:
+            ValueError: When `truncation_point_inclusive` is < 0 (Less than Zero).
+        """
+
+        if truncation_point_inclusive == 0:
+            # Delete every message in the interaction:
+            await tx.run(
+                """
+                MATCH (interaction: Interaction {org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                DETACH DELETE m
+            """,
+                org_id=org_id,
+                user_id=user_id,
+                interaction_id=interaction_id,
+            )
+
+        elif truncation_point_inclusive > 0:
+            # Delete all messages in the interaction below the truncation point.
+            await tx.run(
+                f"""
+                MATCH (interaction: Interaction {{org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id}})-[r:FIRST_MESSAGE|IS_NEXT*{truncation_point_inclusive}]->(m:MessageBlock)
+                MATCH (m)-[:IS_NEXT*]->(n)
+                DETACH DELETE n
+            """,
+                org_id=org_id,
+                user_id=user_id,
+                interaction_id=interaction_id,
+            )
+
+        else:
+            raise ValueError(
+                "`truncation_point_inclusive` should be > 0 (Greater than Zero)."
+            )
 
     async def _add_memories_with_their_source_links(
         self,
@@ -377,52 +415,19 @@ class Neo4jInteraction(BaseGraphDB):
             org_id, user_id, interaction_id
         )
 
-        # Start comparing existing messages with the new ones to know where to truncate from and append new ones, if needed.
-
-        truncate_from = (
-            -1 if existing_messages else 0
-        )  # if there are no existing messages, it means we can add from the top.
-
-        for i in range(len(existing_messages)):
-
-            # When the updated interaction is shorter than the existing interaction.
-            if i == len(updated_memories_and_interaction.interaction):
-
-                # When the updated interaction is empty, `truncate_from = 0`, will lead to deleting all existing messages in that interaction and replace with update interaction.
-                if i == 0:
-                    truncate_from = 0
-
-                # Will eventually lead just keeping the updated interaction, with the existing messages below that point truncated.
-                else:
-                    truncate_from = i - 1
-
-                break
-
-            if (
-                existing_messages[i].get("role")
-                != updated_memories_and_interaction.interaction[i].get("role")
-            ) or (
-                existing_messages[i].get("content")
-                != updated_memories_and_interaction.interaction[i].get("content")
-            ):
-                truncate_from = i
-                break
+        updated_interaction_length = len(updated_memories_and_interaction.interaction)
+        existing_interaction_length = len(existing_messages)
 
         async def update_tx(tx):
 
-            if truncate_from == -1:
-                # No need for truncation just append the latest messages.
-                await self._append_messages_to_interaction(
-                    tx,
-                    org_id,
-                    user_id,
-                    interaction_id,
-                    updated_memories_and_interaction.interaction,
+            # Case 1: Empty updated interaction - delete all existing messages
+            if updated_interaction_length == 0:
+                await self._truncate_interaction_message_below_point(
+                    tx, org_id, user_id, interaction_id, truncation_point_inclusive=0
                 )
 
-            elif (
-                truncate_from == 0
-            ):  # Add messages from the top with the first message linked to the interaction.
+            # Case 2: Empty existing interaction - add all new messages from the top
+            elif existing_interaction_length == 0:
                 await self._add_messages_to_interaction_from_top(
                     tx,
                     org_id,
@@ -431,27 +436,72 @@ class Neo4jInteraction(BaseGraphDB):
                     updated_memories_and_interaction.interaction,
                 )
 
-            elif truncate_from > 0:
-                # Truncate messages from `truncate_from` to the end.
-                await tx.run(
-                    f"""
-                    MATCH (interaction: Interaction {{org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id}})-[r:FIRST_MESSAGE|IS_NEXT*{truncate_from}]->(m:MessageBlock)
-                    MATCH (m)-[:IS_NEXT*]->(n)
-                    DETACH DELETE n
-                """,
-                    org_id=org_id,
-                    user_id=user_id,
-                    interaction_id=interaction_id,
-                )
+            # Case 3: Both interactions have messages - compare and update
+            else:
+                # Find first point of difference
+                truncate_from = -1
+                for i in range(
+                    min(existing_interaction_length, updated_interaction_length)
+                ):
+                    if (
+                        existing_messages[i].get("role")
+                        != updated_memories_and_interaction.interaction[i].get("role")
+                    ) or (
+                        existing_messages[i].get("content")
+                        != updated_memories_and_interaction.interaction[i].get(
+                            "content"
+                        )
+                    ):
+                        truncate_from = i
+                        break
 
-                # Replace from truncated point (now last message) with the new messages.
-                await self._append_messages_to_interaction(
-                    tx,
-                    org_id,
-                    user_id,
-                    interaction_id,
-                    updated_memories_and_interaction.interaction,
-                )
+                # If no differences found in prefix messages, but updated interaction is shorter
+                if (
+                    truncate_from == -1
+                    and updated_interaction_length < existing_interaction_length
+                ):
+                    truncate_from = updated_interaction_length
+
+                # Handle different cases based on where the difference was found
+                if truncate_from == -1:
+                    # Append the new messages at the bottom.
+                    await self._append_messages_to_interaction(
+                        tx,
+                        org_id,
+                        user_id,
+                        interaction_id,
+                        updated_memories_and_interaction.interaction,
+                    )
+
+                elif truncate_from == 0:
+                    # Complete replacement needed
+                    await self._truncate_interaction_message_below_point(
+                        tx,
+                        org_id,
+                        user_id,
+                        interaction_id,
+                        truncation_point_inclusive=0,
+                    )
+                    await self._add_messages_to_interaction_from_top(
+                        tx,
+                        org_id,
+                        user_id,
+                        interaction_id,
+                        updated_memories_and_interaction.interaction,
+                    )
+
+                elif truncate_from > 0:
+                    # Partial replacement needed
+                    await self._truncate_interaction_message_below_point(
+                        tx, org_id, user_id, interaction_id, truncate_from
+                    )
+                    await self._append_messages_to_interaction(
+                        tx,
+                        org_id,
+                        user_id,
+                        interaction_id,
+                        updated_memories_and_interaction.interaction,
+                    )
 
             if new_memory_ids or new_contrary_memory_ids:
                 await self._add_memories_with_their_source_links(
@@ -498,9 +548,8 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if new_memory_ids or new_contrary_memory_ids:
-                if (
-                    self.associated_vector_db
-                ):  # If the graph database is associated with a vector database
+                if self.associated_vector_db:
+                    # If the graph database is associated with a vector database
                     # Add memories to vector DB within this transcation function to ensure data consistency (They succeed or fail together).
                     await self.associated_vector_db.add_memories(
                         org_id=org_id,
