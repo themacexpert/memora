@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
 from ..schema.save_memory_schema import MemoriesAndInteraction
 from ..vector_db.base import BaseVectorDB
 

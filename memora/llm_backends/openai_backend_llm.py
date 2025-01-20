@@ -1,7 +1,8 @@
-from typing import *
+from typing import Any, Dict, List, Type, Union
+
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 from typing_extensions import override
-from openai import AsyncOpenAI
 
 from .base import BaseBackendLLM
 

@@ -46,10 +46,11 @@ Given an interaction between ({agent_label}) and ({user_name}).
 - Use proper tense (past, present, continuous) as appropriate.   
 - Always use #user_#id# instead of ({user_name}) and #agent_#id# instead of ({agent_label}) in the memories. 
 - Do not duplicate any information already present in the previously extracted memories. 
+- If there is no useful new information or contrary update don't extract anything.
 - Output must be JSON format using the schema: 
 {schema}
 
-# PREVIOUSLY EXTRACTED MEMORIES:
+# PREVIOUSLY ALREADY EXTRACTED MEMORIES:
 {previous_memories}
 
 >>>>>>> ENTIRE INTERACTION IS BELOW <<<<<<< 
@@ -65,7 +66,7 @@ You are given existing stored memories and candidate new memories.
 
 # Objective: 
 1. Identify New Memories:
-   - Information gleaned from candidate memories that are not updates to any existing memory.
+   - Information gleaned from candidate memories that are not updates or redundant to any existing memory.
 
 2. Identify Contradictory Memories:
    - Candidate memories that directly contradict existing stored memories.

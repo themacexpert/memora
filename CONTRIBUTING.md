@@ -4,8 +4,6 @@ We welcome all contributions to Memora! No contribution is too small, even fixin
 
 ## Guidelines
 
-- **Code Style**: Please ensure your code is formatted using [Black](https://black.readthedocs.io/en/stable/).
-
 - **Docstrings**: Use the Google style for docstrings in your code.
 
 - **Branch Naming**: When creating a new branch for your update, please use descriptive names such as:
@@ -19,14 +17,27 @@ We welcome all contributions to Memora! No contribution is too small, even fixin
 
   Please DO NOT use pip or conda to install the dependencies. Instead, use Poetry:
 
+  To install all needed packages, run:
   ```
-  make install_all
+  poetry install
   ```
 
-  To activate the virtual environment:
-
+  To activate the virtual environment, use:
   ```
   poetry shell
+  ```
+
+- **Code Style**: Please ensure your code is formatted using [ruff](https://beta.ruff.rs/docs/rules/), [Black](https://black.readthedocs.io/en/stable/), and [isort](https://isort.readthedocs.io/en/latest/). To help with this, we use pre-commit hooks (Note: this is after running `poetry install` and `poetry shell`).
+
+  Make sure to install pre-commit hooks before starting to contribute:
+  ```bash
+  pre-commit install
+  ```
+
+  These hooks will automatically run on your code when you commit changes (`git commit`). If you'd like to run the checks manually on all files before committing, you can run:
+
+  ```bash
+  pre-commit run --all-files
   ```
 
 ## Process

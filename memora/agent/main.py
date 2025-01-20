@@ -8,18 +8,18 @@ from memora.llm_backends.base import BaseBackendLLM
 from memora.prompts import (
     COMPARE_EXISTING_AND_NEW_MEMORIES_INPUT_TEMPLATE,
     COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT,
+    EXTRACTION_MSG_BLOCK_FORMAT,
     FILTER_RETRIEVED_MEMORIES_SYSTEM_PROMPT,
     MEMORY_EXTRACTION_SYSTEM_PROMPT,
     MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT,
     MSG_MEMORY_SEARCH_PROMPT,
     MSG_MEMORY_SEARCH_TEMPLATE,
-    EXTRACTION_MSG_BLOCK_FORMAT,
 )
 from memora.schema import (
-    MemoryExtractionResponse,
-    MemoryComparisonResponse,
     ContraryMemoryToStore,
     MemoriesAndInteraction,
+    MemoryComparisonResponse,
+    MemoryExtractionResponse,
     MemoryToStore,
 )
 from memora.vector_db.base import BaseVectorDB, MemorySearchScope
@@ -381,6 +381,7 @@ class Memora:
                             org_id, user_id, interaction_id
                         )
                     )
+
                     self.logger.debug(
                         f"Found {len(previously_extracted_memories)} previously extracted memories"
                     )
@@ -557,7 +558,7 @@ class Memora:
                                 ],
                             )
                         )
-                    except:
+                    except Exception:
                         continue
 
                 new_contrary_memories = []
@@ -572,7 +573,7 @@ class Memora:
                                 memory.contradicted_memory_id,
                             )
                         )
-                    except:
+                    except Exception:
                         continue
 
                 if interaction_id:
@@ -627,7 +628,7 @@ class Memora:
                         ),
                     )
 
-            except Exception as e:
+            except Exception:
                 if retry == max_retries:
                     self.logger.error(
                         f"Failed to save/update interaction after {max_retries} retries",

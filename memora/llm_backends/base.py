@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Type, Union
+
 from pydantic import BaseModel
-from typing import Type
 
 
 class BaseBackendLLM(ABC):

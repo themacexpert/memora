@@ -31,6 +31,9 @@ mkdocs = "^1.6.1"
 black = "^24.10.0"
 mkdocstrings-python = "^1.13.0"
 mkdocs-material = "^9.5.49"
+pre-commit = "^4.0.1"
+ruff = "^0.9.2"
+isort = "^5.13.2"
 
 [build-system]
 requires = ["poetry-core"]
