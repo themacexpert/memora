@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import neo4j
 from typing_extensions import override
@@ -11,7 +11,7 @@ class Neo4jMemory(BaseGraphDB):
     @override
     async def fetch_user_memories_resolved(
         self, org_user_mem_ids: List[Dict[str, str]]
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
@@ -27,8 +27,10 @@ class Neo4jMemory(BaseGraphDB):
             List[Dict[str, str]] containing memory details:
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the resolved memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
 
         Example:
             ```python
@@ -48,7 +50,7 @@ class Neo4jMemory(BaseGraphDB):
     @override
     async def fetch_user_memories_resolved_batch(
         self, batch_org_user_mem_ids: List[List[Dict[str, str]]]
-    ) -> List[List[Dict[str, str]]]:
+    ) -> List[List[Dict[str, Any]]]:
         """
         Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
@@ -61,11 +63,13 @@ class Neo4jMemory(BaseGraphDB):
             batch_org_user_mem_ids (List[List[Dict[str, str]]]): List of lists containing Dicts with org, user, and memory ids of the memories to fetch and process
 
         Returns:
-            List[List[Dict[str, str]]] with memory details:
+            List[List[Dict[str, Any]]] with memory details:
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the resolved memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
 
         Example:
             ```python
@@ -92,6 +96,9 @@ class Neo4jMemory(BaseGraphDB):
                     // Use the most up to date contrary update memory if it exists
                     OPTIONAL MATCH (memory)-[:CONTRARY_UPDATE*]->(contraryMemory:Memory) WHERE NOT (contraryMemory)-[:CONTRARY_UPDATE]->()
                     WITH coalesce(contraryMemory, memory) AS memoryToReturn
+
+                    MATCH (memoryToReturn)-[:MESSAGE_SOURCE]->(msgSource)
+                    WITH memoryToReturn, collect(msgSource{.*}) as msgSources
                                   
                     MATCH (user:User {org_id: memoryToReturn.org_id, user_id: memoryToReturn.user_id})              
                     MATCH (agent:Agent {org_id: memoryToReturn.org_id, agent_id: memoryToReturn.agent_id})
@@ -99,11 +106,13 @@ class Neo4jMemory(BaseGraphDB):
                     // Case-insensitive 'user_' or 'agent_' followed by UUID and optional ('s) placeholders are replaced with actual names
                     RETURN collect(DISTINCT memoryToReturn{
                                                 .memory_id, 
+                                                .interaction_id,
                                                 memory: apoc.text.replace(
                                                     apoc.text.replace(memoryToReturn.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                                                     '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                                                 ),
-                                                obtained_at: toString(memoryToReturn.obtained_at)
+                                                obtained_at: toString(memoryToReturn.obtained_at),
+                                                message_sources: msgSources,
                                             }) as resolved_memories
                 }
                 RETURN resolved_memories
@@ -123,7 +132,7 @@ class Neo4jMemory(BaseGraphDB):
     @override
     async def get_user_memory(
         self, org_id: str, user_id: str, memory_id: str
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """
         Retrieves a specific memory.
 
@@ -133,26 +142,34 @@ class Neo4jMemory(BaseGraphDB):
             memory_id (str): UUID string identifying the memory
 
         Returns:
-            Dict[str, str] containing memory details:
+            Dict[str, Any] containing memory details:
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
         """
 
         async def get_memory_tx(tx):
             result = await tx.run(
                 """
                 MATCH (m:Memory {org_id: $org_id, user_id: $user_id, memory_id: $memory_id})
+
+                MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
+                WITH m, collect(msgSource{.*}) as msgSources
+
                 MATCH (user:User {org_id: m.org_id, user_id: m.user_id})              
                 MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
                 RETURN m{
                         .memory_id, 
+                        .interaction_id,
                         memory: apoc.text.replace(
                             apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                         ), 
-                        obtained_at: toString(m.obtained_at)
+                        obtained_at: toString(m.obtained_at),
+                        message_sources: msgSources
                     } as memory
             """,
                 org_id=org_id,
@@ -170,7 +187,7 @@ class Neo4jMemory(BaseGraphDB):
     @override
     async def get_user_memory_history(
         self, org_id: str, user_id: str, memory_id: str
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves the history of a specific memory.
 
@@ -180,11 +197,13 @@ class Neo4jMemory(BaseGraphDB):
             memory_id (str): UUID string identifying the memory
 
         Returns:
-            List[Dict[str, str]] containing the history of memory details in descending order (starting with the current version, to the oldest version):
+            List[Dict[str, Any]] containing the history of memory details in descending order (starting with the current version, to the oldest version):
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
         """
 
         async def get_memory_history_tx(tx):
@@ -194,15 +213,21 @@ class Neo4jMemory(BaseGraphDB):
                 WHERE NOT (olderMemory)<-[:CONTRARY_UPDATE]-()
                 WITH nodes(path) AS memory_history
                 UNWIND memory_history AS memory
+
+                MATCH (memory)-[:MESSAGE_SOURCE]->(msgSource)
+                WITH memory, collect(msgSource{.*}) as msgSources
+
                 MATCH (user:User {org_id: memory.org_id, user_id: memory.user_id})              
                 MATCH (agent:Agent {org_id: memory.org_id, agent_id: memory.agent_id})
                 RETURN memory{
                         .memory_id, 
+                        .interaction_id,
                         memory: apoc.text.replace(
                             apoc.text.replace(memory.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                         ), 
-                        obtained_at: toString(memory.obtained_at)
+                        obtained_at: toString(memory.obtained_at),
+                        message_sources: msgSources
                     } as memory
             """,
                 org_id=org_id,
@@ -220,7 +245,7 @@ class Neo4jMemory(BaseGraphDB):
     @override
     async def get_all_user_memories(
         self, org_id: str, user_id: str, agent_id: Optional[str] = None
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves all memories associated with a specific user.
 
@@ -232,11 +257,13 @@ class Neo4jMemory(BaseGraphDB):
                 Otherwise, all memories associated with the user are returned.
 
         Returns:
-            List[Dict[str, str]] containing memory details:
+            List[Dict[str, Any]] containing memory details:
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
         """
 
         async def get_all_memories_tx(tx):
@@ -247,15 +274,21 @@ class Neo4jMemory(BaseGraphDB):
                     MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
                     MATCH (mc)-[:INCLUDES]->(m:Memory)
                     WHERE m.agent_id = $agent_id
-                    WITH m, user             
+                    WITH m, user   
+
+                    MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
+                    WITH m, user, collect(msgSource{.*}) as msgSources
+
                     MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
                     RETURN m{
                         .memory_id, 
+                        .interaction_id,
                         memory: apoc.text.replace(
                             apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                         ), 
-                        obtained_at: toString(m.obtained_at)
+                        obtained_at: toString(m.obtained_at),
+                        message_sources: msgSources
                     } as memory
                 """,
                     org_id=org_id,
@@ -268,15 +301,21 @@ class Neo4jMemory(BaseGraphDB):
                     """
                     MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
                     MATCH (mc)-[:INCLUDES]->(m:Memory)
-                    WITH m, user            
+                    WITH m, user
+
+                    MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
+                    WITH m, user, collect(msgSource{.*}) as msgSources
+
                     MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
                     RETURN m{
                         .memory_id, 
+                        .interaction_id,
                         memory: apoc.text.replace(
                             apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                         ), 
-                        obtained_at: toString(m.obtained_at)
+                        obtained_at: toString(m.obtained_at),
+                        message_sources: msgSources
                     } as memory
                 """,
                     org_id=org_id,
@@ -322,7 +361,7 @@ class Neo4jMemory(BaseGraphDB):
             )
 
             if (
-                self.associated_vector_db
+                self.associated_vector_db and memory_id
             ):  # If the graph database is associated with a vector database
                 # Delete memory from vector DB.
                 await self.associated_vector_db.delete_memory(memory_id)

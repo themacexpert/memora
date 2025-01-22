@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import neo4j
 import shortuuid
@@ -627,7 +627,7 @@ class Neo4jInteraction(BaseGraphDB):
     @override
     async def get_all_interaction_memories(
         self, org_id: str, user_id: str, interaction_id: str
-    ) -> List[Dict[str, str]]:
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves all memories associated with a specific interaction.
 
@@ -637,11 +637,13 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_id (str): Short UUID string identifying the interaction.
 
         Returns:
-            List[Dict[str, str]], each containing memory details:
+            List[Dict[str, Any]], each containing memory details:
 
                 + memory_id: UUID string identifying the memory
+                + interaction_id: UUID string identifying the interaction the memory was sourced from
                 + memory: String content of the memory
                 + obtained_at: ISO format timestamp of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
         """
 
         async def get_memories_tx(tx):
@@ -653,15 +655,21 @@ class Neo4jInteraction(BaseGraphDB):
                     interaction_id: $interaction_id
                 })<-[:INTERACTION_SOURCE]-(m:Memory)
                 WITH m
+
+                MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
+                WITH m, collect(msgSource{.*}) as msgSources
+
                 MATCH (user:User {org_id: m.org_id, user_id: m.user_id})              
                 MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
                 RETURN m{
                     .memory_id, 
+                    .interaction_id,
                     memory: apoc.text.replace(
                         apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                         '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                     ), 
-                    obtained_at: toString(m.obtained_at)
+                    obtained_at: toString(m.obtained_at),
+                    message_sources: msgSources
                 } as memory
             """,
                 org_id=org_id,
@@ -799,7 +807,7 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if (
-                self.associated_vector_db
+                self.associated_vector_db and interaction_memories_ids
             ):  # If the graph database is associated with a vector database
                 # Delete memories from vector DB.
                 await self.associated_vector_db.delete_memories(

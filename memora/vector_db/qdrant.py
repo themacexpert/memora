@@ -13,8 +13,6 @@ class QdrantDB(BaseVectorDB):
         self,
         async_client: AsyncQdrantClient = None,
         collection_name: str = "memory_collection",
-        vector_embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-        sparse_vector_embedding_model: str = "prithivida/Splade_PP_en_v1",
         embed_models_cache_dir: str = "./cache",
     ):
         """
@@ -23,8 +21,6 @@ class QdrantDB(BaseVectorDB):
         Args:
             async_client (AsyncQdrantClient): A pre-initialized Async Qdrant client
             collection_name (str): Name of the Qdrant collection
-            vector_embedding_model (str): The name of the HuggingFace dense vector embedding model to use
-            sparse_vector_embedding_model (str): The name of the HuggingFace sparse vector embedding model to use
             embed_models_cache_dir (str): Directory to cache the embedding models
 
         Example:
@@ -42,8 +38,10 @@ class QdrantDB(BaseVectorDB):
         self.async_client: AsyncQdrantClient = async_client
 
         # Set both dense and sparse embedding models to use for hybrid search.
-        self.vector_embedding_model = vector_embedding_model
-        self.sparse_vector_embedding_model = sparse_vector_embedding_model
+        self.vector_embedding_model: str = (
+            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        )
+        self.sparse_vector_embedding_model: str = "prithivida/Splade_PP_en_v1"
 
         self.async_client.set_model(
             self.vector_embedding_model, cache_dir=embed_models_cache_dir
@@ -156,8 +154,11 @@ class QdrantDB(BaseVectorDB):
             obtained_at (str): ISO format datetime string when the memories were obtained
 
         Raises:
-            ValueError: If the lengths of memory_ids and memories don't match
+            ValueError: If the lengths of memory_ids and memories don't match, or if no memory is passed.
         """
+
+        if not memories:
+            raise ValueError("At least one memory and its memory id is required")
 
         if len(memories) != len(memory_ids):
             raise ValueError("Length of memories and memory_ids must match")
@@ -209,7 +210,13 @@ class QdrantDB(BaseVectorDB):
                 + org_id: str
                 + user_id: str
                 + obtained_at: Iso format timestamp
+
+        Raises:
+            ValueError: If no query is provided.
         """
+
+        if not query:
+            raise ValueError("A query is required")
 
         results = await self.search_memories(
             queries=[query],
@@ -248,7 +255,13 @@ class QdrantDB(BaseVectorDB):
                 + org_id: str
                 + user_id: str
                 + obtained_at: Iso format timestamp
+
+        Raises:
+            ValueError: If no queries are provided.
         """
+
+        if not queries:
+            raise ValueError("At least one query is required")
 
         # Build filter conditions
         filter_conditions = []
@@ -347,11 +360,11 @@ class QdrantDB(BaseVectorDB):
         Args:
             memory_id (str): ID of the memory to delete
         """
-
-        await self.async_client.delete(
-            collection_name=self.collection_name,
-            points_selector=models.PointIdsList(points=[memory_id]),
-        )
+        if memory_id:
+            await self.async_client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.PointIdsList(points=[memory_id]),
+            )
 
     @override
     async def delete_memories(self, memory_ids: List[str]) -> None:
@@ -362,10 +375,11 @@ class QdrantDB(BaseVectorDB):
             memory_ids (List[str]): List of memory IDs to delete
         """
 
-        await self.async_client.delete(
-            collection_name=self.collection_name,
-            points_selector=models.PointIdsList(points=memory_ids),
-        )
+        if memory_ids:
+            await self.async_client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.PointIdsList(points=memory_ids),
+            )
 
     @override
     async def delete_all_user_memories(self, org_id: str, user_id: str) -> None:

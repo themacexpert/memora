@@ -19,7 +19,7 @@ class TogetherBackendLLM(BaseBackendLLM):
         max_retries: int = 3,
     ):
         """
-        Initialize the TogetherLLM class with specific parameters.
+        Initialize the TogetherBackendLLM class with specific parameters.
 
         Args:
             api_key (str): The API key to use for authentication
@@ -28,6 +28,16 @@ class TogetherBackendLLM(BaseBackendLLM):
             top_p (float): The top_p value to use for sampling
             max_tokens (int): The maximum number of tokens to generate
             max_retries (int): The maximum number of retries to make if a request fails
+
+        Example:
+            ```python
+            from memora.llm_backends import TogetherBackendLLM
+
+            together_backend_llm = TogetherBackendLLM(
+                api_key="TOGETHER_API_KEY",
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo"
+            )
+            ```
         """
 
         self.together_client = AsyncTogether(api_key=api_key, max_retries=max_retries)

@@ -18,7 +18,7 @@ class AzureOpenAIBackendLLM(BaseBackendLLM):
         max_tokens: int = 1024,
     ):
         """
-        Initialize the AzureOpenAILLM class with the Azure OpenAI client and specific parameters.
+        Initialize the AzureOpenAIBackendLLM class with the Azure OpenAI client and specific parameters.
 
         Args:
             azure_openai_client (AsyncAzureOpenAI): A pre-initialized Async Azure OpenAI client
@@ -30,9 +30,9 @@ class AzureOpenAIBackendLLM(BaseBackendLLM):
         Example:
             ```python
             from openai import AsyncAzureOpenAI
-            from memora.llm_backends.azure_openai_backend_llm import AzureOpenAIBackendLLM
+            from memora.llm_backends import AzureOpenAIBackendLLM
 
-            azure_openai_llm = AzureOpenAIBackendLLM(
+            azure_openai_backend_llm = AzureOpenAIBackendLLM(
                 azure_openai_client=AsyncAzureOpenAI(
                     azure_endpoint="AZURE_OPENAI_ENDPOINT",
                     api_key="AZURE_OPENAI_API_KEY",

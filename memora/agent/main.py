@@ -778,7 +778,11 @@ class Memora:
         if not enable_final_model_based_memory_filter:
             return (
                 [
-                    {"memory": memory["memory"], "obtained_at": memory["obtained_at"]}
+                    {
+                        "memory": memory["memory"],
+                        "obtained_at": memory["obtained_at"],
+                        "message_sources": memory["message_sources"],
+                    }
                     for memory in retrieved_memories
                 ],  # memories.
                 [memory["memory_id"] for memory in retrieved_memories],  # memory ids.
@@ -795,7 +799,11 @@ class Memora:
             self.logger.info("Model-based filtering failed")
             return (
                 [
-                    {"memory": memory["memory"], "obtained_at": memory["obtained_at"]}
+                    {
+                        "memory": memory["memory"],
+                        "obtained_at": memory["obtained_at"],
+                        "message_sources": memory["message_sources"],
+                    }
                     for memory in retrieved_memories
                 ],  # memories.
                 [memory["memory_id"] for memory in retrieved_memories],  # memory ids.
@@ -809,7 +817,11 @@ class Memora:
 
         memory_dict = {memory["memory_id"]: memory for memory in retrieved_memories}
         selected_memories = [
-            {"memory": memoryObj["memory"], "obtained_at": memoryObj["obtained_at"]}
+            {
+                "memory": memoryObj["memory"],
+                "obtained_at": memoryObj["obtained_at"],
+                "message_sources": memoryObj["message_sources"],
+            }
             for memory_id in filtered_memory_ids
             if (memoryObj := memory_dict.get(memory_id)) is not None
         ]
