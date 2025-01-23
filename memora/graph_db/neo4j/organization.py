@@ -1,8 +1,11 @@
-from typing import Dict, List
+from typing import List
 
 import neo4j
+import neo4j.exceptions
 import shortuuid
 from typing_extensions import override
+
+import memora.schema.models as models
 
 from ..base import BaseGraphDB
 
@@ -10,7 +13,7 @@ from ..base import BaseGraphDB
 class Neo4jOrganization(BaseGraphDB):
 
     @override
-    async def create_organization(self, org_name: str) -> Dict[str, str]:
+    async def create_organization(self, org_name: str) -> models.Organization:
         """
         Creates a new organization in the Neo4j graph database.
 
@@ -18,12 +21,15 @@ class Neo4jOrganization(BaseGraphDB):
             org_name (str): The name of the organization to create.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
+
+        if not isinstance(org_name, str) or not org_name:
+            raise TypeError("`org_name` must be a string and have a value.")
 
         org_id = shortuuid.uuid()
 
@@ -35,7 +41,7 @@ class Neo4jOrganization(BaseGraphDB):
                     org_name: $org_name,
                     created_at: datetime()
                 })
-                RETURN o{.org_id, .org_name, created_at: toString(o.created_at)} as org
+                RETURN o{.org_id, .org_name, .created_at} as org
             """,
                 org_id=org_id,
                 org_name=org_name,
@@ -47,13 +53,22 @@ class Neo4jOrganization(BaseGraphDB):
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
+
             org_data = await session.execute_write(create_org_tx)
-            return org_data
+
+            if org_data is None:
+                raise neo4j.exceptions.Neo4jError("Failed to create organization.")
+
+            return models.Organization(
+                org_id=org_data["org_id"],
+                org_name=org_data["org_name"],
+                created_at=(org_data["created_at"]).to_native(),
+            )
 
     @override
     async def update_organization(
         self, org_id: str, new_org_name: str
-    ) -> Dict[str, str]:
+    ) -> models.Organization:
         """
         Updates an existing organization in the Neo4j graph database.
 
@@ -62,18 +77,26 @@ class Neo4jOrganization(BaseGraphDB):
             new_org_name (str): The new name for the organization.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
+                + created_at: DateTime object of when the organization was created
         """
+
+        if not all(
+            param and isinstance(param, str) for param in (org_id, new_org_name)
+        ):
+            raise ValueError(
+                "Both `org_id` and `new_org_name` must be a string and have a value."
+            )
 
         async def update_org_tx(tx):
             result = await tx.run(
                 """
                 MATCH (o:Org {org_id: $org_id})
                 SET o.org_name = $new_org_name
-                RETURN o{.org_id, .org_name} as org
+                RETURN o{.org_id, .org_name, .created_at} as org
             """,
                 org_id=org_id,
                 new_org_name=new_org_name,
@@ -85,8 +108,19 @@ class Neo4jOrganization(BaseGraphDB):
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
+
             org_data = await session.execute_write(update_org_tx)
-            return org_data
+
+            if org_data is None:
+                raise neo4j.exceptions.Neo4jError(
+                    "Organization (`org_id`) does not exist."
+                )
+
+            return models.Organization(
+                org_id=org_data["org_id"],
+                org_name=org_data["org_name"],
+                created_at=(org_data["created_at"]).to_native(),
+            )
 
     @override
     async def delete_organization(self, org_id: str) -> None:
@@ -100,6 +134,9 @@ class Neo4jOrganization(BaseGraphDB):
         Args:
             org_id (str): Short UUID string identifying the organization to delete.
         """
+
+        if not isinstance(org_id, str) or not org_id:
+            raise TypeError("`org_id` must be a string and have a value.")
 
         async def delete_org_tx(tx):
             # Delete all nodes and relationships associated with the org
@@ -121,7 +158,7 @@ class Neo4jOrganization(BaseGraphDB):
             await session.execute_write(delete_org_tx)
 
     @override
-    async def get_organization(self, org_id: str) -> Dict[str, str]:
+    async def get_organization(self, org_id: str) -> models.Organization:
         """
         Gets a specific organization from the Neo4j graph database.
 
@@ -129,18 +166,21 @@ class Neo4jOrganization(BaseGraphDB):
             org_id (str): Short UUID string identifying the organization to retrieve.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
+
+        if not isinstance(org_id, str) or not org_id:
+            raise TypeError("`org_id` must be a string and have a value.")
 
         async def get_org_tx(tx):
             result = await tx.run(
                 """
                 MATCH (o:Org {org_id: $org_id})
-                RETURN o{.org_id, .org_name, created_at: toString(o.created_at)} as org
+                RETURN o{.org_id, .org_name, .created_at} as org
             """,
                 org_id=org_id,
             )
@@ -151,26 +191,36 @@ class Neo4jOrganization(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.READ_ACCESS
         ) as session:
             org_data = await session.execute_read(get_org_tx)
-            return org_data
+
+            if org_data is None:
+                raise neo4j.exceptions.Neo4jError(
+                    "Organization (`org_id`) does not exist."
+                )
+
+            return models.Organization(
+                org_id=org_data["org_id"],
+                org_name=org_data["org_name"],
+                created_at=(org_data["created_at"]).to_native(),
+            )
 
     @override
-    async def get_all_organizations(self) -> List[Dict[str, str]]:
+    async def get_all_organizations(self) -> List[models.Organization]:
         """
         Gets all organizations from the graph database.
 
         Returns:
-            List[Dict[str, str]] each containing:
+            List[Organization] each containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
 
         async def get_all_org_tx(tx):
             result = await tx.run(
                 """
                 MATCH (o:Org)
-                RETURN o{.org_id, .org_name, created_at: toString(o.created_at)} as org
+                RETURN o{.org_id, .org_name, .created_at} as org
             """
             )
             records = await result.value("org", [])
@@ -179,5 +229,14 @@ class Neo4jOrganization(BaseGraphDB):
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS
         ) as session:
-            org_data = await session.execute_read(get_all_org_tx)
-            return org_data
+
+            all_org_data = await session.execute_read(get_all_org_tx)
+
+            return [
+                models.Organization(
+                    org_id=org_data["org_id"],
+                    org_name=org_data["org_name"],
+                    created_at=(org_data["created_at"]).to_native(),
+                )
+                for org_data in all_org_data
+            ]

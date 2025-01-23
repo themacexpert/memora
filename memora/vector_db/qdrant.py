@@ -1,8 +1,11 @@
 import uuid
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import List, Optional, Tuple
 
 from qdrant_client import AsyncQdrantClient, models
 from typing_extensions import override
+
+import memora.schema.models as schema_models
 
 from .base import BaseVectorDB, MemorySearchScope
 
@@ -152,9 +155,6 @@ class QdrantDB(BaseVectorDB):
             memory_ids (List[uuid.UUID]): List of UUIDs for each memory
             memories (List[str]): List of memory strings to add
             obtained_at (str): ISO format datetime string when the memories were obtained
-
-        Raises:
-            ValueError: If the lengths of memory_ids and memories don't match, or if no memory is passed.
         """
 
         if not memories:
@@ -190,7 +190,7 @@ class QdrantDB(BaseVectorDB):
         org_id: str,
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Tuple[schema_models.Memory, float]]:
         """
         Memory search with optional user/agent filtering.
 
@@ -202,17 +202,17 @@ class QdrantDB(BaseVectorDB):
             agent_id (Optional[str]): Optional agent ID for filtering
 
         Returns:
-            List[Dict[str, Any]] containing search results with at least:
+            List[Tuple[Memory, float]] containing tuple of search results and score:
+                Memory:
 
-                + memory: str
-                + score: float
-                + memory_id: str
-                + org_id: str
-                + user_id: str
-                + obtained_at: Iso format timestamp
+                    + org_id: str
+                    + agent_id: str
+                    + user_id: str
+                    + memory_id: str
+                    + memory: str
+                    + obtained_at: datetime
 
-        Raises:
-            ValueError: If no query is provided.
+                float: Score of the memory
         """
 
         if not query:
@@ -235,7 +235,7 @@ class QdrantDB(BaseVectorDB):
         org_id: str,
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> List[List[Tuple[schema_models.Memory, float]]]:
         """
         Batch memory search with optional user/agent filtering.
 
@@ -247,17 +247,17 @@ class QdrantDB(BaseVectorDB):
             agent_id (Optional[str]): Optional agent ID for filtering
 
         Returns:
-            List[List[Dict[str, Any]]] of search results for each query, where each dictionary contains at least:
+            List[List[Tuple[Memory, float]]] of search results for each query, with a tuple containing:
+                Memory:
 
-                + memory: str
-                + score: float
-                + memory_id: str
-                + org_id: str
-                + user_id: str
-                + obtained_at: Iso format timestamp
+                    + org_id: str
+                    + agent_id: str
+                    + user_id: str
+                    + memory_id: str
+                    + memory: str
+                    + obtained_at: datetime
 
-        Raises:
-            ValueError: If no queries are provided.
+                float: Score of the memory
         """
 
         if not queries:
@@ -339,12 +339,19 @@ class QdrantDB(BaseVectorDB):
 
         search_results = [
             [
-                {
-                    "memory": point.payload.pop("document"),
-                    **point.payload,
-                    "score": point.score,
-                    "memory_id": point.id,
-                }
+                (
+                    schema_models.Memory(
+                        org_id=point.payload["org_id"],
+                        agent_id=point.payload["agent_id"],
+                        user_id=point.payload["user_id"],
+                        memory_id=point.id,
+                        memory=point.payload["document"],
+                        obtained_at=datetime.fromisoformat(
+                            point.payload["obtained_at"]
+                        ),
+                    ),
+                    point.score,
+                )
                 for point in query.points
                 if point.score > 0.35  # Filter out low relevance memory.
             ]

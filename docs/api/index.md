@@ -18,6 +18,3 @@ An interface for LLM providers, along with some implementations, that Memora can
 
 ### [:octicons-file-code-24: Schemas](schema/extraction.md)
 Pydantic data models that are used for structured memory extraction, storage, and retrieval to ensure consistency and model structured output.
-
-### [:octicons-comment-discussion-24: Prompts](prompts/extraction.md)
-System prompts and input templates used by the LLM in various memory operations.

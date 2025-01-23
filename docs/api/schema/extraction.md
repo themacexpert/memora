@@ -2,12 +2,12 @@
 
 Contains Pydantic data models that are used for structured memory extraction from the model (LLM).
 
-::: memora.schema.ExtractedMemory
+::: memora.schema.extraction_schema.ExtractedMemory
 
-::: memora.schema.MemoryExtractionResponse
+::: memora.schema.extraction_schema.MemoryExtractionResponse
 
-::: memora.schema.NewGleanedMemory
+::: memora.schema.extraction_schema.NewGleanedMemory
 
-::: memora.schema.ContraryMemory
+::: memora.schema.extraction_schema.ContraryMemory
 
-::: memora.schema.MemoryComparisonResponse
+::: memora.schema.extraction_schema.MemoryComparisonResponse

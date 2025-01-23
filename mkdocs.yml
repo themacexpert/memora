@@ -126,11 +126,6 @@ nav:
       - Memory Extraction: api/schema/extraction.md
       - Memory Storage: api/schema/storage.md
 
-    - Prompts:
-      - Extraction: api/prompts/extraction.md
-      - Search: api/prompts/search.md
-      - Filter: api/prompts/filter.md
-
   - Change Log: changelog.md
 
 extra:
