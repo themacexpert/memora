@@ -247,7 +247,11 @@ class Memora:
 
         # Flatten and sort memories by score across the batch results
         sorted_memories = sorted(
-            (memory[0] for result in batch_results for memory in result),
+            [
+                memory_and_score
+                for result in batch_results
+                for memory_and_score in result
+            ],
             key=lambda x: x[1],
             reverse=True,
         )
@@ -255,12 +259,12 @@ class Memora:
         # Extract the (org, user and memory ids), filtering out the ones to be excluded
         org_user_mem_ids = [
             {
-                "memory_id": memory.memory_id,
-                "user_id": memory.user_id,
-                "org_id": memory.org_id,
+                "memory_id": memory[0].memory_id,
+                "user_id": memory[0].user_id,
+                "org_id": memory[0].org_id,
             }
             for memory in sorted_memories
-            if memory.memory_id not in filter_out_memory_ids_set
+            if memory[0].memory_id not in filter_out_memory_ids_set
         ]
 
         if not org_user_mem_ids:
@@ -828,7 +832,7 @@ class Memora:
             self.logger.info("Model-based filtering returned no memories")
             return None, None
 
-        memory_dict = {memory["memory_id"]: memory for memory in retrieved_memories}
+        memory_dict = {memory.memory_id: memory for memory in retrieved_memories}
         selected_memories = [
             memoryObj
             for memory_id in filtered_memory_ids

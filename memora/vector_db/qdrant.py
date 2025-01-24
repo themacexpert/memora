@@ -416,7 +416,7 @@ class QdrantDB(BaseVectorDB):
                         models.Prefetch(
                             query=dense,
                             using=self.async_client.get_vector_field_name(),
-                            score_threshold=0.4,
+                            score_threshold=0.3,
                             limit=12,
                         ),
                     ],

@@ -125,7 +125,7 @@ class Neo4jMemory(BaseGraphDB):
                                                     apoc.text.replace(memoryToReturn.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                                                     '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                                                 ),
-                                                message_sources: msgSources,
+                                                message_sources: msgSources
                                             }) as resolved_memories
                 }
                 RETURN resolved_memories
@@ -394,16 +394,16 @@ class Neo4jMemory(BaseGraphDB):
 
         async def get_all_memories_tx(tx):
             query = """
-                MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc:MemoryCollection)
+                MATCH (user:User {{org_id: $org_id, user_id: $user_id}})-[:HAS_MEMORIES]->(mc:MemoryCollection)
                 MATCH (mc)-[:INCLUDES]->(m:Memory)
                 {agent_filter}
                 WITH m, user
 
                 OPTIONAL MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
-                WITH m, user, collect(msgSource{.*}) as msgSources
+                WITH m, user, collect(msgSource{{.*}}) as msgSources
 
-                MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
-                RETURN m{
+                MATCH (agent:Agent {{org_id: m.org_id, agent_id: m.agent_id}})
+                RETURN m{{
                     .org_id,
                     .agent_id,
                     .user_id,
@@ -415,7 +415,7 @@ class Neo4jMemory(BaseGraphDB):
                         '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                     ),
                     message_sources: msgSources
-                } as memory
+                }} as memory
             """
             agent_filter = "WHERE m.agent_id = $agent_id" if agent_id else ""
             result = await tx.run(
