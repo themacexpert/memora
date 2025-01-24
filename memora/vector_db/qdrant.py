@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -6,8 +7,7 @@ from qdrant_client import AsyncQdrantClient, models
 from typing_extensions import override
 
 import memora.schema.models as schema_models
-
-from .base import BaseVectorDB, MemorySearchScope
+from memora.vector_db.base import BaseVectorDB, MemorySearchScope
 
 
 class QdrantDB(BaseVectorDB):
@@ -15,8 +15,9 @@ class QdrantDB(BaseVectorDB):
     def __init__(
         self,
         async_client: AsyncQdrantClient = None,
-        collection_name: str = "memory_collection",
+        collection_name: str = "memory_collection_v0_2",
         embed_models_cache_dir: str = "./cache",
+        enable_logging: bool = False,
     ):
         """
         Initialize the QdrantDB class.
@@ -25,6 +26,7 @@ class QdrantDB(BaseVectorDB):
             async_client (AsyncQdrantClient): A pre-initialized Async Qdrant client
             collection_name (str): Name of the Qdrant collection
             embed_models_cache_dir (str): Directory to cache the embedding models
+            enable_logging (bool): Whether to enable console logging
 
         Example:
             ```python
@@ -42,7 +44,7 @@ class QdrantDB(BaseVectorDB):
 
         # Set both dense and sparse embedding models to use for hybrid search.
         self.vector_embedding_model: str = (
-            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         )
         self.sparse_vector_embedding_model: str = "prithivida/Splade_PP_en_v1"
 
@@ -56,26 +58,117 @@ class QdrantDB(BaseVectorDB):
         # Set the collection name.
         self.collection_name = collection_name
 
+        # Configure logging
+        self.logger = logging.getLogger(__name__)
+        if enable_logging:
+            logging.basicConfig(level=logging.INFO)
+
+    # Migration Code.
+    async def migrate_to_v0_2(
+        self,
+        former_collection_name: str = "memory_collection",
+        new_collection_name: str = "memory_collection_v0_2",
+        delete_former_collection_after: bool = True,
+        batch_size: int = 100,
+        parallel: Optional[int] = None,
+    ):
+        """
+        Perform the migration from the old Qdrant collection to a new Qdrant collection using the current dense vector embedding model (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` with `384` dimensions).
+
+        Note:
+            Make sure to halt any operations like adding or deleting on the vector database during migration.
+
+        Args:
+            former_collection_name (str): Name of the former collection in the vector database, if you didn't explicitly specify this in earlier version it will be `memory_collection`.
+            new_collection_name (str): Name for the new Qdrant collection. Defaults to `memory_collection_v0_2`.
+            delete_former_collection_after (bool): If True, delete the former collection after migration. Defaults to True.
+            batch_size (int): Number of records to fetch and migrate in each batch. Defaults to 100.
+            parallel (Optional[int]): How many parallel workers to use for embedding. Defaults to None. If number is specified, Qdrant will use a data-parallel process. Note: Parallel processing is recommended only for large collections (tens of thousands of memories) and large batch sizes (above 500). For smaller collections or batch sizes, parallel processing may be slower.
+        """
+
+        self.logger.info(
+            f"Starting migration from {former_collection_name} to {new_collection_name}"
+        )
+        await self._create_collection_if_not_exists(new_collection_name)
+        number_of_memories_to_migrate = (
+            await self.async_client.get_collection(former_collection_name)
+        ).points_count
+
+        if number_of_memories_to_migrate == 0:
+            await self.async_client.delete_collection(former_collection_name)
+            self.logger.info("No memories to migrate, just deleted former collection.")
+            return
+
+        offset_id = None
+        num_migrated = 0
+
+        while True:
+            records, offset_id = await self.async_client.scroll(
+                collection_name=former_collection_name,
+                limit=batch_size,
+                offset=offset_id,
+            )
+            memories, metadata, memory_ids = zip(
+                *[
+                    (record.payload.pop("document", ""), record.payload, record.id)
+                    for record in records
+                ]
+            )
+            await self.async_client.add(
+                collection_name=new_collection_name,
+                documents=memories,
+                metadata=metadata,
+                ids=memory_ids,
+                parallel=parallel,
+            )
+            num_migrated += len(records)
+            self.logger.info(
+                f"Migrated: {num_migrated}/{number_of_memories_to_migrate}"
+            )
+
+            if offset_id is None:
+                self.logger.info("Migration completed 😊")
+
+                if delete_former_collection_after:
+
+                    await self.async_client.delete_collection(former_collection_name)
+                    self.logger.info(
+                        f"Deleted former collection: {former_collection_name}"
+                    )
+
+                break  # Migration Done
+
     @override
     async def close(self) -> None:
         """Closes the qdrant database connection."""
 
         await self.async_client.close()
+        self.logger.info("QdrantDB connection closed")
 
     # Setup methods
     @override
     async def setup(self, *args, **kwargs) -> None:
         """Setup the QdrantDB by creating the collection and payload indices."""
 
-        await self._create_collection()
+        await self._create_collection_if_not_exists()
         await self._create_payload_indices()
+        self.logger.info("QdrantDB setup completed")
 
-    async def _create_collection(self) -> None:
-        """Create collection with vector and sparse vector configs for hybrid search."""
+    async def _create_collection_if_not_exists(
+        self, collection_name: Optional[str] = None
+    ) -> None:
+        """
+        Create collection (if not exists) with vector and sparse vector configs for hybrid search.
 
-        if not await self.async_client.collection_exists(self.collection_name):
+        Args:
+            collection_name (Optional[str]): Name for the Qdrant collection. Defaults to self.collection_name.
+        """
+
+        collection_name = collection_name or self.collection_name
+
+        if not await self.async_client.collection_exists(collection_name):
             await self.async_client.create_collection(
-                collection_name=self.collection_name,
+                collection_name=collection_name,
                 vectors_config=self.async_client.get_fastembed_vector_params(),
                 sparse_vectors_config=self.async_client.get_fastembed_sparse_vector_params(),
                 hnsw_config=models.HnswConfigDiff(
@@ -93,6 +186,7 @@ class QdrantDB(BaseVectorDB):
                     ),
                 ),
             )
+            self.logger.info(f"Created collection: {collection_name}")
 
     async def _create_payload_indices(self) -> None:
         """Create payload indices for multi-tenancy."""
@@ -116,6 +210,7 @@ class QdrantDB(BaseVectorDB):
                 is_tenant=True,
             ),
         )
+        self.logger.info("Created payload indexes on vector DB.")
 
     # Embedding helper methods
     def _dense_embed_queries(self, queries: List[str]) -> List[List[float]]:
@@ -179,7 +274,10 @@ class QdrantDB(BaseVectorDB):
             documents=memories,
             metadata=metadata,
             ids=[str(memory_id) for memory_id in memory_ids],
-            # parallel=0  # Use all CPU cores
+            # parallel=_  # Use all CPU cores
+        )
+        self.logger.info(
+            f"Added {len(memories)} memories to collection: {self.collection_name}"
         )
 
     @override
@@ -372,6 +470,7 @@ class QdrantDB(BaseVectorDB):
                 collection_name=self.collection_name,
                 points_selector=models.PointIdsList(points=[memory_id]),
             )
+            self.logger.info(f"Deleted memory with ID: {memory_id}")
 
     @override
     async def delete_memories(self, memory_ids: List[str]) -> None:
@@ -387,6 +486,7 @@ class QdrantDB(BaseVectorDB):
                 collection_name=self.collection_name,
                 points_selector=models.PointIdsList(points=memory_ids),
             )
+            self.logger.info(f"Deleted memories with IDs: {memory_ids}")
 
     @override
     async def delete_all_user_memories(self, org_id: str, user_id: str) -> None:
@@ -407,6 +507,9 @@ class QdrantDB(BaseVectorDB):
                 )
             ),
         )
+        self.logger.info(
+            f"Deleted all memories for user {user_id} in organization {org_id}"
+        )
 
     @override
     async def delete_all_organization_memories(self, org_id: str) -> None:
@@ -425,3 +528,4 @@ class QdrantDB(BaseVectorDB):
             collection_name=self.collection_name,
             points_selector=models.Filter(must=filter_conditions),
         )
+        self.logger.info(f"Deleted all memories for organization {org_id}")
