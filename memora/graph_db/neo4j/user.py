@@ -65,7 +65,7 @@ class Neo4jUser(BaseGraphDB):
                 user_name=user_name,
             )
             record = await result.single()
-            return record["user"]
+            return record["user"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -124,7 +124,7 @@ class Neo4jUser(BaseGraphDB):
             )
 
             record = await result.single()
-            return record["user"]
+            return record["user"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -208,7 +208,7 @@ class Neo4jUser(BaseGraphDB):
                 user_id=user_id,
             )
             record = await result.single()
-            return record["user"]
+            return record["user"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS
@@ -228,7 +228,7 @@ class Neo4jUser(BaseGraphDB):
             )
 
     @override
-    async def get_all_users(self, org_id: str) -> List[models.User]:
+    async def get_all_org_users(self, org_id: str) -> List[models.User]:
         """
         Gets all users belonging to the specified organization from the graph database.
 

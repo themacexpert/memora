@@ -231,7 +231,7 @@ class Neo4jMemory(BaseGraphDB):
                 memory_id=memory_id,
             )
             record = await result.single()
-            return record["memory"]
+            return record["memory"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS

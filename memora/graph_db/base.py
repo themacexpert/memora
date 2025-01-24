@@ -315,7 +315,7 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_all_users(self, org_id: str) -> List[models.User]:
+    async def get_all_org_users(self, org_id: str) -> List[models.User]:
         """
         Gets all users belonging to the specified organization from the graph database.
 

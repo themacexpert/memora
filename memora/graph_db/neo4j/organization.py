@@ -48,7 +48,7 @@ class Neo4jOrganization(BaseGraphDB):
             )
 
             record = await result.single()
-            return record["org"]
+            return record["org"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -103,7 +103,7 @@ class Neo4jOrganization(BaseGraphDB):
             )
 
             record = await result.single()
-            return record["org"]
+            return record["org"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -185,7 +185,7 @@ class Neo4jOrganization(BaseGraphDB):
                 org_id=org_id,
             )
             record = await result.single()
-            return record["org"]
+            return record["org"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS

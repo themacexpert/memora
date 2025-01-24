@@ -87,7 +87,7 @@ class Neo4jAgent(BaseGraphDB):
                 )
 
             record = await result.single()
-            return record["agent"]
+            return record["agent"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -148,7 +148,7 @@ class Neo4jAgent(BaseGraphDB):
             )
 
             record = await result.single()
-            return record["agent"]
+            return record["agent"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
@@ -228,7 +228,7 @@ class Neo4jAgent(BaseGraphDB):
                 agent_id=agent_id,
             )
             record = await result.single()
-            return record["agent"]
+            return record["agent"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS

@@ -647,12 +647,15 @@ class Neo4jInteraction(BaseGraphDB):
                     user_id: $user_id, 
                     interaction_id: $interaction_id
                 })
+
+                // Initialize messages/memories upfront
+                WITH interaction, [] AS messages, [] AS memories
             """
 
             if with_messages:
                 query += """
                 OPTIONAL MATCH (interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
-                WITH interaction, collect(m{.*}) as messages
+                WITH interaction, collect(m{.*}) as messages, memories
                 """
 
             if with_memories:
@@ -660,16 +663,18 @@ class Neo4jInteraction(BaseGraphDB):
                 OPTIONAL MATCH (interaction)<-[:INTERACTION_SOURCE]-(mem:Memory)
                 OPTIONAL MATCH (mem)-[:MESSAGE_SOURCE]->(msg)
 
-                MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
-                MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
+                WITH interaction, messages, mem, collect(msg{.*}) AS msg_sources
+
+                OPTIONAL MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
+                OPTIONAL MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
 
                 WITH interaction, messages, collect(mem{
                                                         .*, 
                                                         memory: apoc.text.replace(
-                                                            apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                                                            apoc.text.replace(mem.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                                                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                                                         ),
-                                                        message_sources: collect(msg{.*})
+                                                        message_sources: msg_sources
                                                         }) as memories
                 """
 
@@ -681,8 +686,8 @@ class Neo4jInteraction(BaseGraphDB):
                     .interaction_id,
                     .created_at,
                     .updated_at,
-                    messages: CASE WHEN $with_messages THEN messages ELSE [] END,
-                    memories: CASE WHEN $with_memories THEN memories ELSE [] END
+                    messages: messages,
+                    memories: memories
                 } as interaction
             """
 
@@ -691,12 +696,10 @@ class Neo4jInteraction(BaseGraphDB):
                 org_id=org_id,
                 user_id=user_id,
                 interaction_id=interaction_id,
-                with_messages=with_messages,
-                with_memories=with_memories,
             )
 
             record = await result.single()
-            return record["interaction"]
+            return record["interaction"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS
@@ -708,7 +711,7 @@ class Neo4jInteraction(BaseGraphDB):
                     "Interaction (`org_id`, `user_id`, `interaction_id`) does not exist."
                 )
 
-            models.Interaction(
+            return models.Interaction(
                 org_id=interaction_data["org_id"],
                 user_id=interaction_data["user_id"],
                 agent_id=interaction_data["agent_id"],
@@ -717,8 +720,8 @@ class Neo4jInteraction(BaseGraphDB):
                 updated_at=(interaction_data["updated_at"]).to_native(),
                 messages=[
                     models.MessageBlock(
-                        role=message["role"],
-                        content=message["content"],
+                        role=message.get("role"),
+                        content=message.get("content"),
                         msg_position=message["msg_position"],
                     )
                     for message in (interaction_data.get("messages") or [])
@@ -734,8 +737,8 @@ class Neo4jInteraction(BaseGraphDB):
                         obtained_at=(memory["obtained_at"]).to_native(),
                         message_sources=[
                             models.MessageBlock(
-                                role=msg["role"],
-                                content=msg["content"],
+                                role=msg.get("role"),
+                                content=msg.get("content"),
                                 msg_position=msg["msg_position"],
                             )
                             for msg in (memory.get("message_sources") or [])
@@ -744,7 +747,6 @@ class Neo4jInteraction(BaseGraphDB):
                     for memory in (interaction_data.get("memories") or [])
                 ],
             )
-            return interaction_data
 
     @override
     async def get_all_user_interactions(
@@ -789,40 +791,44 @@ class Neo4jInteraction(BaseGraphDB):
         if not all(param and isinstance(param, str) for param in (org_id, user_id)):
             raise ValueError("`org_id` and `user_id` must be strings and have a value.")
 
-        if not all(param and isinstance(param, int) for param in (skip, limit)):
+        if not all(isinstance(param, int) for param in (skip, limit)):
             raise ValueError("`skip` and `limit` must be integers.")
 
         async def get_interactions_tx(tx):
 
             query = """
                 MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
-                WITH interaction
                 ORDER BY interaction.updated_at DESC
                 SKIP $skip
                 LIMIT $limit
+
+                // Initialize messages/memories upfront
+                WITH interaction, [] AS messages, [] AS memories
             """
 
             if with_their_messages:
                 query += """
                 OPTIONAL MATCH (interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
-                WITH interaction, collect(m{.*}) as messages
+                WITH interaction, collect(m{.*}) as messages, memories
                 """
 
             if with_their_memories:
                 query += """
                 OPTIONAL MATCH (interaction)<-[:INTERACTION_SOURCE]-(mem:Memory)
                 OPTIONAL MATCH (mem)-[:MESSAGE_SOURCE]->(msg)
+
+                WITH interaction, messages, mem, collect(msg{.*}) AS msg_sources
                 
-                MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
-                MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
+                OPTIONAL MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
+                OPTIONAL MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
 
                 WITH interaction, messages, collect(mem{
                                                         .*, 
                                                         memory: apoc.text.replace(
-                                                            apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                                                            apoc.text.replace(mem.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
                                                             '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
                                                         ),
-                                                        message_sources: collect(msg{.*})
+                                                        message_sources: msg_sources
                                                         }) as memories
                 """
 
@@ -834,19 +840,13 @@ class Neo4jInteraction(BaseGraphDB):
                     .interaction_id,
                     .created_at,
                     .updated_at,
-                    messages: CASE WHEN $with_their_messages THEN messages ELSE [] END,
-                    memories: CASE WHEN $with_their_memories THEN memories ELSE [] END
+                    messages: messages,
+                    memories: memories
                 } as interaction
             """
 
             result = await tx.run(
-                query,
-                org_id=org_id,
-                user_id=user_id,
-                skip=skip,
-                limit=limit,
-                with_their_messages=with_their_messages,
-                with_their_memories=with_their_memories,
+                query, org_id=org_id, user_id=user_id, skip=skip, limit=limit
             )
 
             records = await result.value("interaction", [])
@@ -867,8 +867,8 @@ class Neo4jInteraction(BaseGraphDB):
                     updated_at=(interaction_data["updated_at"]).to_native(),
                     messages=[
                         models.MessageBlock(
-                            role=message["role"],
-                            content=message["content"],
+                            role=message.get("role"),
+                            content=message.get("content"),
                             msg_position=message["msg_position"],
                         )
                         for message in (interaction_data.get("messages") or [])
@@ -884,8 +884,8 @@ class Neo4jInteraction(BaseGraphDB):
                             obtained_at=(memory["obtained_at"]).to_native(),
                             message_sources=[
                                 models.MessageBlock(
-                                    role=msg["role"],
-                                    content=msg["content"],
+                                    role=msg.get("role"),
+                                    content=msg.get("content"),
                                     msg_position=msg["msg_position"],
                                 )
                                 for msg in (memory.get("message_sources") or [])
