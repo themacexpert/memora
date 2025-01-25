@@ -1,7 +1,9 @@
 import uuid
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, Tuple
+
+from memora.schema import models
 
 
 class MemorySearchScope(Enum):
@@ -47,9 +49,6 @@ class BaseVectorDB(ABC):
             memory_ids (List[uuid.UUID]): List of UUIDs for each memory
             memories (List[str]): List of memory strings to add
             obtained_at (str): ISO format datetime string when the memories were obtained
-
-        Raises:
-            ValueError: If the lengths of memory_ids and memories don't match
         """
         pass
 
@@ -61,7 +60,7 @@ class BaseVectorDB(ABC):
         org_id: str,
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Tuple[models.Memory, float]]:
         """
         Memory search with optional user/agent filtering.
 
@@ -73,14 +72,17 @@ class BaseVectorDB(ABC):
             agent_id (Optional[str]): Optional agent ID for filtering
 
         Returns:
-            List[Dict[str, Any]] containing search results with at least:
+            List[Tuple[Memory, float]] containing tuple of search results and score:
+                Memory:
 
-                + memory: str
-                + score: float
-                + memory_id: str
-                + org_id: str
-                + user_id: str
-                + obtained_at: Iso format timestamp
+                    + org_id: str
+                    + agent_id: str
+                    + user_id: str
+                    + memory_id: str
+                    + memory: str
+                    + obtained_at: datetime
+
+                float: Score of the memory
         """
         pass
 
@@ -92,7 +94,7 @@ class BaseVectorDB(ABC):
         org_id: str,
         user_id: Optional[str] = None,
         agent_id: Optional[str] = None,
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> List[List[Tuple[models.Memory, float]]]:
         """
         Batch memory search with optional user/agent filtering.
 
@@ -104,14 +106,17 @@ class BaseVectorDB(ABC):
             agent_id (Optional[str]): Optional agent ID for filtering
 
         Returns:
-            List[List[Dict[str, Any]]] of search results for each query, where each dictionary contains at least:
+            List[List[Tuple[models.Memory, float]]] of search results for each query, with a tuple containing:
+                Memory:
 
-                + memory: str
-                + score: float
-                + memory_id: str
-                + org_id: str
-                + user_id: str
-                + obtained_at: Iso format timestamp
+                    + org_id: str
+                    + agent_id: str
+                    + user_id: str
+                    + memory_id: str
+                    + memory: str
+                    + obtained_at: datetime
+
+                float: Score of the memory
         """
         pass
 

@@ -1,24 +1,30 @@
 ![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
 
-<p align="center">
-    <a href="https://pepy.tech/projects/memora-core">
-        <img src="https://static.pepy.tech/badge/memora-core" alt="Memora PyPI Downloads">
-    </a>
-    <a href="https://pypi.org/project/memora-core" target="_blank">
-        <img src="https://img.shields.io/pypi/v/memora-core?color=%2334D058&label=pypi%20package" alt="Package version">
-    </a>
-    <a href="https://github.com/elzai/memora/blob/main/LICENSE">    
-        <img src="https://img.shields.io/badge/License-Apache%202.0-ac878a?style=flat-square" alt="License">
-    </a>
-</p>
+<div align="center">
+    <div align="center">
+        <a href="https://pepy.tech/projects/memora-core">
+            <img src="https://static.pepy.tech/badge/memora-core" alt="Memora PyPI Downloads">
+        </a>
+        <a href="https://pypi.org/project/memora-core" target="_blank">
+            <img src="https://img.shields.io/pypi/v/memora-core?color=%2334D058&label=pypi%20package" alt="Package version">
+        </a>
+        <a href="https://github.com/elzai/memora/blob/main/LICENSE">    
+            <img src="https://img.shields.io/badge/License-Apache%202.0-ac878a?style=flat-square" alt="License">
+        </a>
+    </div>
+    <div style="margin-top: 10px; margin-bottom: 20px">
+        <a target="_blank" href="https://betalist.com/startups/memora?utm_campaign=badge-memora&amp;utm_medium=badge&amp;utm_source=badge-featured">
+            <img alt="Memora - Replicating the Human Memory for every Personalized AI | BetaList" width="156" height="54" style="width: 156px; height: 54px" src="https://betalist.com/badges/featured?id=116881&amp;theme=color">
+        </a>
+    </div>
+</div>
+        
 
 **[📚 Checkout Documentation](https://elzai.github.io/memora/)**
 
-> [!IMPORTANT]
-> **This project is NOT associated with any cryptocurrency, token, or related offerings on X (Twitter) or any other platform.**  
-> If you see any claims suggesting otherwise, they are fake and unrelated to this project. Please report such claims to help protect others. Thank you!
-
 When we interact with people 🗣️👂, we naturally remember details from past interactions 💭, feelings 😜😢, and shared experiences 🤝. That's what makes us human. **We're bringing this same ability to AI, helping it recall just like us.**
+
+***Give the [github repo](https://github.com/ELZAI/memora/) a starhug ⭐️—it’s feeling a lil’ lonely 🥺***
 
 ## Key Features
 
@@ -94,9 +100,9 @@ memora = Memora(
     vector_db=vector_db,
     graph_db=graph_db,
     # Fast model for memory search queries / filtering.
-    memory_search_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.1-8b-instant"),
+    memory_search_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="mixtral-8x7b-32768"),
     # Powerful model for memory extraction
-    extraction_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.3-70b-specdec", max_tokens=8000)
+    extraction_model=GroqBackendLLM(api_key="GROQ_API_KEY", model="llama-3.3-70b-versatile", max_tokens=8000)
 )
 
 ```
@@ -106,15 +112,15 @@ memora = Memora(
 ```python
 # Create an organization
 org = await memora.graph.create_organization("My Organization")
-org_id = org['org_id'] # Short UUID e.g 'gmDr4sUiWMCqbGAiV8jjbU'
+org_id = org.org_id # Short UUID e.g 'gmDr4sUiWMCqbGAiV8jjbU'
 
 # Create a user in the organization
 user = await memora.graph.create_user(org_id, "Alice")
-user_id = user['user_id'] # Short UUID e.g '89sSRXoz53gdWPJoTEEass'
+user_id = user.user_id # Short UUID e.g '89sSRXoz53gdWPJoTEEass'
 
 # Create an agent belonging to the organization and user (optionally).
 agent = await memora.graph.create_agent(org_id, "Jenny, Personal AI", user_id=user_id)
-agent_id = agent['agent_id'] # Short UUID e.g 'CcyKXxhi2skEcDpRzNZim7'
+agent_id = agent.agent_id # Short UUID e.g 'CcyKXxhi2skEcDpRzNZim7'
 
 ```
 
@@ -134,7 +140,7 @@ interaction = [
 ]
 
 # Save the interaction and its memories
-interaction_id, created_at_timestamp = await memora.save_or_update_interaction_and_memories(
+interaction_id, created_at_datetime = await memora.save_or_update_interaction_and_memories(
     org_id=org_id,
     user_id=user_id,
     agent_id=agent_id,
@@ -160,7 +166,7 @@ updated_interaction = interaction + [
 ]
 
 # Update the existing interaction (In this case it simply appends the new messages)
-interaction_id, updated_at_timestamp = await memora.save_or_update_interaction_and_memories(
+interaction_id, updated_at_datetime = await memora.save_or_update_interaction_and_memories(
     org_id=org_id,
     user_id=user_id,
     agent_id=agent_id,
@@ -182,7 +188,11 @@ memories = await memora.search_memories_as_one(
     search_queries=["Who is my wife?", "When is my wife due?"],
     search_across_agents=True
 )
-# memories: [{"memory_id": "uuid string", "memory": "Jake married Sarah on August 12th, 2023", obtained_at: "iso timestamp"},{"memory_id": "uuid string", "memory": "Jake's wife Sarah is due on December 15th", obtained_at: "iso timestamp"}, ...]
+
+# memories: [
+# Memory(..., memory_id='uuid string', memory="Jake married Sarah on August 12th, 2023", obtained_at=datetime(...), message_sources=[...]), 
+# Memory(..., memory_id='uuid string', memory="Jake's wife Sarah is due on December 15th", obtained_at=datetime(...), message_sources=[...])
+# ...]
 
 
 
@@ -194,25 +204,31 @@ batch_memories = await memora.search_memories_as_batch(
     memory_search_scope=MemorySearchScope.USER,  # Can be "user" or "organization"
     search_across_agents=True
 )
-# batch_memories: [[{"memory_id": "uuid string", "memory": "Jake has confirmed he is allergic to peanuts", obtained_at: "iso timestamp"}, ...], [{"memory_id": "uuid string", "memory": "Jake's wife Sarah is due on December 15th", obtained_at: "iso timestamp"}, ...]]
+# batch_memories: [
+# [Memory(..., memory_id='uuid string', memory="Jake has confirmed he is allergic to peanuts", obtained_at=datetime(...), message_sources=[...]), ...], 
+# [Memory(..., memory_id='uuid string', memory="Jake's wife Sarah is due on December 15th", obtained_at=datetime(...), message_sources=[...]), ...]
+#]
 ```
 
 ### **4. Recall Memories for a User's Message in Interaction**
 
 ```python
-recalled_memories, memory_ids = await memora.recall_memories_for_message(
+recalled_memories, just_memory_ids = await memora.recall_memories_for_message(
     org_id,
     user_id,
     latest_msg="Sarah is really in pain more nowdays, so both of us can't sleep.",
     # Optional: Add previous messages in the interaction for context.
     preceding_msg_for_context=[],
-    # Optional: Exclude previously recalled memories (e.g They are already in the conversation). See sample personal assistant in the documentation.
+    # Optional: Exclude previously recalled memories (e.g They are already in the conversation). See sample personal assistant below.
     filter_out_memory_ids_set={'4b9df118-fa11-4e29-abfd-3b02587aa251'}  
 )
 
-# recalled_memories: [{"memory": "Jake's wife Sarah is due on December 15th", "obtained_at": "iso timestamp"}, {"memory": "Jake and Sarah are pretty confident the baby’s a girl but will confirm at the next ultrasound.", "obtained_at": "iso timestamp"}, ...]
+# recalled_memories: [
+# Memory(..., memory_id='uuid string', memory="Jake's wife Sarah is due on December 15th", obtained_at=datetime(...), message_sources=[...]),
+# Memory(..., memory_id='uuid string', memory="Jake and Sarah are pretty confident the baby’s a girl but will confirm at the next ultrasound.", obtained_at=datetime(...), message_sources=[...]),  
+# ...]
 
-# memory_ids: ["uuid string", "uuid string", ...]
+# just_memory_ids: ["uuid string", "uuid string", ...]
 ```
 
 
@@ -223,7 +239,7 @@ recalled_memories, memory_ids = await memora.recall_memories_for_message(
 all_memories = await memora.graph.get_all_user_memories(org_id, user_id)
 
 # Get memories from a specific interaction
-interaction_memories = await memora.graph.get_all_interaction_memories(org_id, user_id, interaction_id)
+interaction_memories = await memora.graph.get_interaction(org_id, user_id, interaction_id, with_memories=True, with_messages=False)
 
 # Get the history of a specific memory, this contains all updates of a memory in descending order (starting with the latest version to the oldest)
 history = await memora.graph.get_user_memory_history(org_id, user_id, "memory_uuid")
@@ -252,7 +268,7 @@ recalled_memories, _ = await memora.recall_memories_for_message(org_id, user_id,
 
 include_memory_in_message = """
     memory recall: {memories}\n---\nmessage: {message}
-""".format(memories=str(recalled_memories), message=user_message)
+""".format(memories=str([memory.memory_and_timestamp_dict() for memory in recalled_memories]), message=user_message)
 
 messages.append({'role': 'user', 'content': include_memory_in_message})
 response = await client.chat.completions.create(model="gpt-4o", messages=messages)

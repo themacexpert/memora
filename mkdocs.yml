@@ -50,9 +50,6 @@ theme:
 
 plugins:
   - search
-  - exclude-search:
-      exclude:
-        - api/prompts/*
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -123,15 +120,9 @@ nav:
       - Together: api/llm_backends/together.md
 
     - Schema:
+      - Models: api/schema/models.md
       - Memory Extraction: api/schema/extraction.md
       - Memory Storage: api/schema/storage.md
-
-    - Prompts:
-      - Extraction: api/prompts/extraction.md
-      - Search: api/prompts/search.md
-      - Filter: api/prompts/filter.md
-
-  - Change Log: changelog.md
 
 extra:
   social:

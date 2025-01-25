@@ -1,11 +1,13 @@
 import uuid
+from datetime import datetime
 from typing import Dict, List, Tuple
 
 import neo4j
 import shortuuid
 from typing_extensions import override
 
-from memora.schema.save_memory_schema import MemoriesAndInteraction
+from memora.schema import models
+from memora.schema.storage_schema import MemoriesAndInteraction
 
 from ..base import BaseGraphDB
 
@@ -146,7 +148,7 @@ class Neo4jInteraction(BaseGraphDB):
         memories_and_interaction: MemoriesAndInteraction,
         new_memory_ids: List[str],
         new_contrary_memory_ids: List[str],
-    ):
+    ) -> None:
         """Add all memories and link to their source message and interaction."""
 
         await tx.run(
@@ -207,7 +209,7 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         new_contrary_memory_ids: List[str],
         memories_and_interaction: MemoriesAndInteraction,
-    ):
+    ) -> None:
         """Link the new contary memories as updates to the old memory they contradicted."""
 
         await tx.run(
@@ -236,7 +238,7 @@ class Neo4jInteraction(BaseGraphDB):
         agent_id: str,
         user_id: str,
         memories_and_interaction: MemoriesAndInteraction,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Creates a new interaction record with associated memories.
 
@@ -250,11 +252,18 @@ class Neo4jInteraction(BaseGraphDB):
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string identifying the created interaction
-                + created_at: ISO format timestamp of when the interaction was created
+                + created_at: DateTime object of when the interaction was created.
         """
+
+        if not all(
+            param and isinstance(param, str) for param in (org_id, user_id, agent_id)
+        ):
+            raise ValueError(
+                "`org_id`, `user_id` and `agent_id` must be strings and have a value."
+            )
 
         interaction_id = shortuuid.uuid()
         new_memory_ids = [
@@ -264,6 +273,10 @@ class Neo4jInteraction(BaseGraphDB):
             str(uuid.uuid4())
             for _ in range(len(memories_and_interaction.contrary_memories))
         ]
+
+        self.logger.info(
+            f"Saving interaction {interaction_id} for user {user_id} with agent {agent_id}"
+        )
 
         async def save_tx(tx):
 
@@ -298,12 +311,16 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if not memories_and_interaction.interaction:
+                self.logger.info(
+                    f"No messages to save for interaction {interaction_id}"
+                )
                 return (
                     interaction_id,
                     memories_and_interaction.interaction_date.isoformat(),
                 )
 
             # Add the messages to the interaction.
+            self.logger.info(f"Adding messages to interaction {interaction_id}")
             await self._add_messages_to_interaction_from_top(
                 tx,
                 org_id,
@@ -314,6 +331,7 @@ class Neo4jInteraction(BaseGraphDB):
 
             if new_memory_ids or new_contrary_memory_ids:
                 # Add the all memories (new & new contrary) and connect to their interaction message source.
+                self.logger.info("Adding memories and linking to their message source")
                 await self._add_memories_with_their_source_links(
                     tx,
                     org_id,
@@ -327,6 +345,9 @@ class Neo4jInteraction(BaseGraphDB):
 
             if new_contrary_memory_ids:
                 # Link the new contary memories as updates to the old memory they contradicted.
+                self.logger.info(
+                    "Linking contrary memories to existing memories they contradicted"
+                )
                 await self._link_update_contrary_memories_to_existing_memories(
                     tx,
                     org_id,
@@ -357,12 +378,16 @@ class Neo4jInteraction(BaseGraphDB):
                         obtained_at=memories_and_interaction.interaction_date.isoformat(),
                     )
 
-            return interaction_id, memories_and_interaction.interaction_date.isoformat()
+            return interaction_id, memories_and_interaction.interaction_date
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            return await session.execute_write(save_tx)
+            result = await session.execute_write(save_tx)
+            self.logger.info(
+                f"Successfully saved interaction {interaction_id} for user {user_id}"
+            )
+            return result
 
     @override
     async def update_interaction_and_memories(
@@ -372,7 +397,7 @@ class Neo4jInteraction(BaseGraphDB):
         user_id: str,
         interaction_id: str,
         updated_memories_and_interaction: MemoriesAndInteraction,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Update an existing interaction record and add new memories.
 
@@ -395,11 +420,22 @@ class Neo4jInteraction(BaseGraphDB):
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string identifying the updated interaction
-                + updated_at: ISO format timestamp of when the update occurred
+                + updated_at: DateTime object of when the interaction was last updated.
         """
+
+        if not all(
+            param and isinstance(param, str) for param in (org_id, user_id, agent_id)
+        ):
+            raise ValueError(
+                "`org_id`, `user_id` and `agent_id` must be strings and have a value."
+            )
+
+        self.logger.info(
+            f"Updating interaction {interaction_id} for user {user_id} with agent {agent_id}"
+        )
 
         new_memory_ids = [
             str(uuid.uuid4())
@@ -411,9 +447,11 @@ class Neo4jInteraction(BaseGraphDB):
         ]
 
         # First get the existing messages.
-        existing_messages: List[Dict[str, str]] = await self.get_interaction_messages(
-            org_id, user_id, interaction_id
-        )
+        existing_messages: List[models.MessageBlock] = (
+            await self.get_interaction(
+                org_id, user_id, interaction_id, with_messages=True, with_memories=False
+            )
+        ).messages
 
         updated_interaction_length = len(updated_memories_and_interaction.interaction)
         existing_interaction_length = len(existing_messages)
@@ -422,12 +460,16 @@ class Neo4jInteraction(BaseGraphDB):
 
             # Case 1: Empty updated interaction - delete all existing messages
             if updated_interaction_length == 0:
+                self.logger.info(
+                    f"Truncating all messages from interaction {interaction_id} as updated interaction is empty"
+                )
                 await self._truncate_interaction_message_below_point(
                     tx, org_id, user_id, interaction_id, truncation_point_inclusive=0
                 )
 
             # Case 2: Empty existing interaction - add all new messages from the top
             elif existing_interaction_length == 0:
+                self.logger.info(f"Adding all messages to interaction {interaction_id}")
                 await self._add_messages_to_interaction_from_top(
                     tx,
                     org_id,
@@ -444,10 +486,10 @@ class Neo4jInteraction(BaseGraphDB):
                     min(existing_interaction_length, updated_interaction_length)
                 ):
                     if (
-                        existing_messages[i].get("role")
+                        existing_messages[i].role
                         != updated_memories_and_interaction.interaction[i].get("role")
                     ) or (
-                        existing_messages[i].get("content")
+                        existing_messages[i].content
                         != updated_memories_and_interaction.interaction[i].get(
                             "content"
                         )
@@ -465,6 +507,9 @@ class Neo4jInteraction(BaseGraphDB):
                 # Handle different cases based on where the difference was found
                 if truncate_from == -1:
                     # Append the new messages at the bottom.
+                    self.logger.info(
+                        f"Appending new messages to interaction {interaction_id}"
+                    )
                     await self._append_messages_to_interaction(
                         tx,
                         org_id,
@@ -475,6 +520,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from == 0:
                     # Complete replacement needed
+                    self.logger.info(
+                        f"Storing latest interaction {interaction_id} messages"
+                    )
                     await self._truncate_interaction_message_below_point(
                         tx,
                         org_id,
@@ -492,6 +540,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from > 0:
                     # Partial replacement needed
+                    self.logger.info(
+                        f"Updating messages in interaction {interaction_id} from position {truncate_from}"
+                    )
                     await self._truncate_interaction_message_below_point(
                         tx, org_id, user_id, interaction_id, truncate_from
                     )
@@ -504,6 +555,7 @@ class Neo4jInteraction(BaseGraphDB):
                     )
 
             if new_memory_ids or new_contrary_memory_ids:
+                self.logger.info("Adding memories and linking to their source messages")
                 await self._add_memories_with_their_source_links(
                     tx,
                     org_id,
@@ -516,6 +568,9 @@ class Neo4jInteraction(BaseGraphDB):
                 )
 
             if new_contrary_memory_ids:
+                self.logger.info(
+                    "Linking contrary memories to existing memories they contradicted"
+                )
                 await self._link_update_contrary_memories_to_existing_memories(
                     tx,
                     org_id,
@@ -570,18 +625,25 @@ class Neo4jInteraction(BaseGraphDB):
 
             return (
                 interaction_id,
-                updated_memories_and_interaction.interaction_date.isoformat(),
+                updated_memories_and_interaction.interaction_date,
             )
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            return await session.execute_write(update_tx)
+            result = await session.execute_write(update_tx)
+            self.logger.info(f"Successfully updated interaction {interaction_id}")
+            return result
 
     @override
-    async def get_interaction_messages(
-        self, org_id: str, user_id: str, interaction_id: str
-    ) -> List[Dict[str, str]]:
+    async def get_interaction(
+        self,
+        org_id: str,
+        user_id: str,
+        interaction_id: str,
+        with_messages: bool = True,
+        with_memories: bool = True,
+    ) -> models.Interaction:
         """
         Retrieves all messages associated with a specific interaction.
 
@@ -589,93 +651,148 @@ class Neo4jInteraction(BaseGraphDB):
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction.
+            with_messages (bool): Whether to retrieve messages along with the interaction.
+            with_memories (bool): Whether to also retrieve memories gotten across all occurrences of this interaction.
 
         Returns:
-            List[Dict[str, str]], each containing message details:
+            Interaction containing:
 
-                + role: Role of the message sender (user or agent)
-                + content: String content of the message
-                + msg_position: Position of the message in the interaction
+                + org_id: Short UUID string identifying the organization.
+                + user_id: Short UUID string identifying the user.
+                + agent_id: Short UUID string identifying the agent.
+                + interaction_id: Short UUID string identifying the interaction.
+                + created_at: DateTime object of when the interaction was created.
+                + updated_at: DateTime object of when the interaction was last updated.
+                + messages (if `with_messages` = True): List of messages in the interaction.
+                + memories (if `with_memories` = True): List of memories gotten from all occurrences of this interaction.
+
+        Note:
+            A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
 
-        async def get_messages_tx(tx):
+        if not all(
+            param and isinstance(param, str)
+            for param in (org_id, user_id, interaction_id)
+        ):
+            raise ValueError(
+                "`org_id`, `user_id` and `interaction_id` must be strings and have a value."
+            )
 
-            result = await tx.run(
-                """
-                // Traverse the interaction and retrieve the messages.
+        self.logger.info(
+            f"Retrieving interaction {interaction_id} for user {user_id} with messages={with_messages} and memories={with_memories}"
+        )
+
+        async def get_interaction_tx(tx):
+
+            query = """
                 MATCH (interaction: Interaction {
                     org_id: $org_id, 
                     user_id: $user_id, 
                     interaction_id: $interaction_id
-                    })-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                })
 
-                return m{.*} as messages
-            """,
-                org_id=org_id,
-                user_id=user_id,
-                interaction_id=interaction_id,
-            )
+                // Initialize messages/memories upfront
+                WITH interaction, [] AS messages, [] AS memories
+            """
 
-            records = await result.value("messages", [])
-            return records
-
-        async with self.driver.session(
-            database=self.database, default_access_mode=neo4j.READ_ACCESS
-        ) as session:
-            return await session.execute_read(get_messages_tx)
-
-    @override
-    async def get_all_interaction_memories(
-        self, org_id: str, user_id: str, interaction_id: str
-    ) -> List[Dict[str, str]]:
-        """
-        Retrieves all memories associated with a specific interaction.
-
-        Args:
-            org_id (str): Short UUID string identifying the organization.
-            user_id (str): Short UUID string identifying the user.
-            interaction_id (str): Short UUID string identifying the interaction.
-
-        Returns:
-            List[Dict[str, str]], each containing memory details:
-
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
-        """
-
-        async def get_memories_tx(tx):
-            result = await tx.run(
+            if with_messages:
+                query += """
+                OPTIONAL MATCH (interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                WITH interaction, collect(m{.*}) as messages, memories
                 """
-                MATCH (i:Interaction {
-                    org_id: $org_id,
-                    user_id: $user_id,
-                    interaction_id: $interaction_id
-                })<-[:INTERACTION_SOURCE]-(m:Memory)
-                WITH m
-                MATCH (user:User {org_id: m.org_id, user_id: m.user_id})              
-                MATCH (agent:Agent {org_id: m.org_id, agent_id: m.agent_id})
-                RETURN m{
-                    .memory_id, 
-                    memory: apoc.text.replace(
-                        apoc.text.replace(m.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
-                        '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
-                    ), 
-                    obtained_at: toString(m.obtained_at)
-                } as memory
-            """,
+
+            if with_memories:
+                query += """
+                OPTIONAL MATCH (interaction)<-[:INTERACTION_SOURCE]-(mem:Memory)
+                OPTIONAL MATCH (mem)-[:MESSAGE_SOURCE]->(msg)
+
+                WITH interaction, messages, mem, collect(msg{.*}) AS msg_sources
+
+                OPTIONAL MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
+                OPTIONAL MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
+
+                WITH interaction, messages, collect(mem{
+                                                        .*, 
+                                                        memory: apoc.text.replace(
+                                                            apoc.text.replace(mem.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                                                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                                                        ),
+                                                        message_sources: msg_sources
+                                                        }) as memories
+                """
+
+            query += """
+                RETURN interaction{
+                    .org_id,
+                    .user_id,
+                    .agent_id,
+                    .interaction_id,
+                    .created_at,
+                    .updated_at,
+                    messages: messages,
+                    memories: memories
+                } as interaction
+            """
+
+            result = await tx.run(
+                query,
                 org_id=org_id,
                 user_id=user_id,
                 interaction_id=interaction_id,
             )
 
-            records = await result.value("memory", [])
-            return records
+            record = await result.single()
+            return record["interaction"] if record else None
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS
         ) as session:
-            return await session.execute_read(get_memories_tx)
+            interaction_data = await session.execute_read(get_interaction_tx)
+
+            if interaction_data is None:
+                self.logger.info(
+                    f"Interaction {interaction_id} not found for user {user_id}"
+                )
+                raise neo4j.exceptions.Neo4jError(
+                    "Interaction (`org_id`, `user_id`, `interaction_id`) does not exist."
+                )
+
+            return models.Interaction(
+                org_id=interaction_data["org_id"],
+                user_id=interaction_data["user_id"],
+                agent_id=interaction_data["agent_id"],
+                interaction_id=interaction_data["interaction_id"],
+                created_at=(interaction_data["created_at"]).to_native(),
+                updated_at=(interaction_data["updated_at"]).to_native(),
+                messages=[
+                    models.MessageBlock(
+                        role=message.get("role"),
+                        content=message.get("content"),
+                        msg_position=message["msg_position"],
+                    )
+                    for message in (interaction_data.get("messages") or [])
+                ],
+                memories=[
+                    models.Memory(
+                        org_id=memory["org_id"],
+                        agent_id=memory["agent_id"],
+                        user_id=memory["user_id"],
+                        interaction_id=memory["interaction_id"],
+                        memory_id=memory["memory_id"],
+                        memory=memory["memory"],
+                        obtained_at=(memory["obtained_at"]).to_native(),
+                        message_sources=[
+                            models.MessageBlock(
+                                role=msg.get("role"),
+                                content=msg.get("content"),
+                                msg_position=msg["msg_position"],
+                            )
+                            for msg in (memory.get("message_sources") or [])
+                        ],
+                    )
+                    for memory in (interaction_data.get("memories") or [])
+                ],
+            )
 
     @override
     async def get_all_user_interactions(
@@ -683,74 +800,152 @@ class Neo4jInteraction(BaseGraphDB):
         org_id: str,
         user_id: str,
         with_their_messages: bool = True,
+        with_their_memories: bool = True,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Interaction]:
         """
         Retrieves all interactions for a specific user in an organization.
 
         Note:
-            Interaction are sorted in descending order by their updated at datetime. (So most recent interactions are first).
+            Interactions are sorted in descending order by their updated at datetime. (So most recent interactions are first).
 
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
-            with_their_messages (bool): Whether to include messages of the interactions.
+            with_their_messages (bool): Whether to also retrieve messages of an interaction.
+            with_their_memories (bool): Whether to also retrieve memories gotten across all occurrences of an interaction.
             skip (int): Number of interactions to skip. (Useful for pagination)
             limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
 
         Returns:
-            List[Dict[str, str]], each dict containing interaction details and messages (or [] if `with_their_messages` is False):
+            List[Interaction], each containing an Interaction with:
 
-                + interaction: Interaction Data like created_at, updated_at, interaction_id, ...
-                + messages: List of messages in order (each message is a dict with role, content, msg_position)
+                + org_id: Short UUID string identifying the organization.
+                + user_id: Short UUID string identifying the user.
+                + agent_id: Short UUID string identifying the agent.
+                + interaction_id: Short UUID string identifying the interaction.
+                + created_at: DateTime object of when the interaction was created.
+                + updated_at: DateTime object of when the interaction was last updated.
+                + messages (if `with_their_messages` = True): List of messages in the interaction.
+                + memories (if `with_their_memories` = True): List of memories gotten from all occurrences of this interaction.
+
+        Note:
+            A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
 
+        if not all(param and isinstance(param, str) for param in (org_id, user_id)):
+            raise ValueError("`org_id` and `user_id` must be strings and have a value.")
+
+        if not all(isinstance(param, int) for param in (skip, limit)):
+            raise ValueError("`skip` and `limit` must be integers.")
+
+        self.logger.info(
+            f"Retrieving all interactions for user {user_id} with messages={with_their_messages} and memories={with_their_memories}"
+        )
+
         async def get_interactions_tx(tx):
+
+            query = """
+                MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
+                ORDER BY interaction.updated_at DESC
+                SKIP $skip
+                LIMIT $limit
+
+                // Initialize messages/memories upfront
+                WITH interaction, [] AS messages, [] AS memories
+            """
+
             if with_their_messages:
-                result = await tx.run(
-                    """
-                    // Fetch interactions ordered by most recent to oldest.
-                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
-                    WITH interaction
-                    ORDER BY interaction.updated_at DESC
-                    SKIP $skip
-                    LIMIT $limit
+                query += """
+                OPTIONAL MATCH (interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
+                WITH interaction, collect(m{.*}) as messages, memories
+                """
 
-                    // Fetch the interaction messages in order.
-                    MATCH (interaction:Interaction)-[:FIRST_MESSAGE|IS_NEXT*]->(message)
-                    WITH interaction{.*, created_at: toString(interaction.created_at), updated_at: toString(interaction.updated_at)}, COLLECT(message{.*}) as messages
-                    RETURN {interaction: interaction, messages: messages} as interaction_dict
-                """,
-                    org_id=org_id,
-                    user_id=user_id,
-                    skip=skip,
-                    limit=limit,
-                )
-            else:
-                result = await tx.run(
-                    """
-                    // Fetch interactions ordered by most recent to oldest.
-                    MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
-                    WITH interaction
-                    ORDER BY interaction.updated_at DESC
-                    SKIP $skip
-                    LIMIT $limit
-                    RETURN {interaction: interaction{.*, created_at: toString(interaction.created_at), updated_at: toString(interaction.updated_at)}, messages: []} as interaction_dict
-                """,
-                    org_id=org_id,
-                    user_id=user_id,
-                    skip=skip,
-                    limit=limit,
-                )
+            if with_their_memories:
+                query += """
+                OPTIONAL MATCH (interaction)<-[:INTERACTION_SOURCE]-(mem:Memory)
+                OPTIONAL MATCH (mem)-[:MESSAGE_SOURCE]->(msg)
 
-            records = await result.value("interaction_dict", [])
+                WITH interaction, messages, mem, collect(msg{.*}) AS msg_sources
+                
+                OPTIONAL MATCH (user:User {org_id: mem.org_id, user_id: mem.user_id})              
+                OPTIONAL MATCH (agent:Agent {org_id: mem.org_id, agent_id: mem.agent_id})
+
+                WITH interaction, messages, collect(mem{
+                                                        .*, 
+                                                        memory: apoc.text.replace(
+                                                            apoc.text.replace(mem.memory, '(?i)user_[a-z0-9\\-]+(?:\\'s)?', user.user_name), 
+                                                            '(?i)agent_[a-z0-9\\-]+(?:\\'s)?',  agent.agent_label
+                                                        ),
+                                                        message_sources: msg_sources
+                                                        }) as memories
+                """
+
+            query += """
+                RETURN interaction{
+                    .org_id,
+                    .user_id,
+                    .agent_id,
+                    .interaction_id,
+                    .created_at,
+                    .updated_at,
+                    messages: messages,
+                    memories: memories
+                } as interaction
+            """
+
+            result = await tx.run(
+                query, org_id=org_id, user_id=user_id, skip=skip, limit=limit
+            )
+
+            records = await result.value("interaction", [])
             return records
 
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.READ_ACCESS
         ) as session:
-            return await session.execute_read(get_interactions_tx)
+            all_interactions_data = await session.execute_read(get_interactions_tx)
+
+            return [
+                models.Interaction(
+                    org_id=interaction_data["org_id"],
+                    user_id=interaction_data["user_id"],
+                    agent_id=interaction_data["agent_id"],
+                    interaction_id=interaction_data["interaction_id"],
+                    created_at=(interaction_data["created_at"]).to_native(),
+                    updated_at=(interaction_data["updated_at"]).to_native(),
+                    messages=[
+                        models.MessageBlock(
+                            role=message.get("role"),
+                            content=message.get("content"),
+                            msg_position=message["msg_position"],
+                        )
+                        for message in (interaction_data.get("messages") or [])
+                    ],
+                    memories=[
+                        models.Memory(
+                            org_id=memory["org_id"],
+                            agent_id=memory["agent_id"],
+                            user_id=memory["user_id"],
+                            interaction_id=memory["interaction_id"],
+                            memory_id=memory["memory_id"],
+                            memory=memory["memory"],
+                            obtained_at=(memory["obtained_at"]).to_native(),
+                            message_sources=[
+                                models.MessageBlock(
+                                    role=msg.get("role"),
+                                    content=msg.get("content"),
+                                    msg_position=msg["msg_position"],
+                                )
+                                for msg in (memory.get("message_sources") or [])
+                            ],
+                        )
+                        for memory in (interaction_data.get("memories") or [])
+                    ],
+                )
+                for interaction_data in all_interactions_data
+            ]
 
     @override
     async def delete_user_interaction_and_its_memories(
@@ -771,12 +966,25 @@ class Neo4jInteraction(BaseGraphDB):
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
-        interaction_memories = await self.get_all_interaction_memories(
-            org_id, user_id, interaction_id
+        if not all(
+            param and isinstance(param, str)
+            for param in (org_id, user_id, interaction_id)
+        ):
+            raise ValueError(
+                "`org_id`, `user_id` and `interaction_id` must be strings and have a value."
+            )
+
+        self.logger.info(
+            f"Deleting interaction {interaction_id} and its memories for user {user_id}"
         )
-        interaction_memories_ids = [
-            memory["memory_id"] for memory in interaction_memories
-        ]
+
+        interaction_memories = (
+            await self.get_interaction(
+                org_id, user_id, interaction_id, with_messages=False, with_memories=True
+            )
+        ).memories
+
+        interaction_memories_ids = [memory.memory_id for memory in interaction_memories]
 
         async def delete_tx(tx):
             # Delete the interaction, its messages and memories.
@@ -799,7 +1007,7 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if (
-                self.associated_vector_db
+                self.associated_vector_db and interaction_memories_ids
             ):  # If the graph database is associated with a vector database
                 # Delete memories from vector DB.
                 await self.associated_vector_db.delete_memories(
@@ -828,6 +1036,11 @@ class Neo4jInteraction(BaseGraphDB):
             If the graph database is associated with a vector database, the memories are also deleted there for data consistency.
         """
 
+        if not all(param and isinstance(param, str) for param in (org_id, user_id)):
+            raise ValueError("`org_id` and `user_id` must be strings and have a value.")
+
+        self.logger.info(f"Deleting all interactions and memories for user {user_id}")
+
         async def delete_all_tx(tx):
             await tx.run(
                 """
@@ -846,6 +1059,9 @@ class Neo4jInteraction(BaseGraphDB):
             if (
                 self.associated_vector_db
             ):  # If the graph database is associated with a vector database
+                self.logger.info(
+                    f"Deleting all memories from vector database for user {user_id}"
+                )
                 await self.associated_vector_db.delete_all_user_memories(
                     org_id, user_id
                 )
@@ -854,3 +1070,6 @@ class Neo4jInteraction(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_all_tx)
+            self.logger.info(
+                f"Successfully deleted all interactions and memories for user {user_id}"
+            )

@@ -121,14 +121,17 @@ if tool_calls: # The memory search tool was called.
     queries = search_args["queries"] # ["restaurant last weekend", "amazing tacos"]
 
     # Step 3: Perform memory search with queries as a single batch
-    recalled_memories, memory_ids = await memora.search_memories_as_one(
+    recalled_memories, just_memory_ids = await memora.search_memories_as_one(
         org_id=org_id,
         user_id=user_id,
         search_queries=queries,
         search_across_agents=True
     )
 
-    # recalled_memories: [{"memory": "Jake confirmed Chezy has the best tacos, saying his mouth literally watered.", "obtained_at": "iso_timestamp"}, {"memory": "Jake is planing to go to Chezy this weekend.", "obtained_at": "iso_timestamp"}]
+    # recalled_memories: [
+    # Memory(..., memory_id='uuid string', memory="Jake confirmed Chezy has the best tacos, saying his mouth literally watered.", obtained_at=datetime(...), message_sources=[...]),
+    # Memory(..., memory_id='uuid string', memory="Jake is planing to go to Chezy this weekend.", obtained_at=datetime(...), message_sources=[...]),
+    #...]
 
     # Add the tool response to the conversation
     messages.append(
@@ -136,7 +139,7 @@ if tool_calls: # The memory search tool was called.
             "tool_call_id": tool_calls[0].id, 
             "role": "tool", # Indicates this message is from tool use
             "name": "search_memories",
-            "content": str(recalled_memories),
+            "content": str([memory.memory_and_timestamp_dict() for memory in recalled_memories]),
         }
     )
 
@@ -197,8 +200,8 @@ To implement a custom graph database that Memora can use, extend the `BaseGraphD
 
 ```python
 from memora.graph_db.base import BaseGraphDB
+from memora.schema import models
 from typing_extensions import override
-from typing import *
 
 class CustomGraphDB(BaseGraphDB):
     @override
@@ -207,7 +210,7 @@ class CustomGraphDB(BaseGraphDB):
         pass
 
     @override
-    async def create_organization(self, org_name: str) -> Dict[str, str]:
+    async def create_organization(self, org_name: str) -> models.Organization:
         # Implement organization creation logic
         pass
 
@@ -224,7 +227,6 @@ To implement a custom vector database that Memora can use, extend the `BaseVecto
 ```python
 from memora.vector_db.base import BaseVectorDB
 from typing_extensions import override
-from typing import *
 
 class CustomVectorDB(BaseVectorDB):
 

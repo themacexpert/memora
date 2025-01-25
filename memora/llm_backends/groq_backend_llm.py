@@ -19,7 +19,7 @@ class GroqBackendLLM(BaseBackendLLM):
         max_retries: int = 3,
     ):
         """
-        Initialize the GroqLLM class with specific parameters.
+        Initialize the GroqBackendLLM class with specific parameters.
 
         Args:
             api_key (str): The API key to use for authentication
@@ -28,6 +28,16 @@ class GroqBackendLLM(BaseBackendLLM):
             top_p (float): The top_p value to use for sampling
             max_tokens (int): The maximum number of tokens to generate
             max_retries (int): The maximum number of retries for API requests
+
+        Example:
+            ```python
+            from memora.llm_backends import GroqBackendLLM
+
+            groq_backend_llm = GroqBackendLLM(
+                api_key="GROQ_API_KEY",
+                model="llama-3.3-70b-specdec"
+            )
+            ```
         """
 
         self.groq_client = AsyncGroq(api_key=api_key, max_retries=max_retries)

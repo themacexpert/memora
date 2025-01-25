@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import neo4j
@@ -23,6 +24,7 @@ class Neo4jGraphInterface(
         password: str,
         database: str,
         associated_vector_db: Optional[BaseVectorDB] = None,
+        enable_logging: bool = False,
     ):
         """
         A unified interface for interacting with the Neo4j graph database.
@@ -33,6 +35,7 @@ class Neo4jGraphInterface(
             password (str): The password for authentication.
             database (str): The name of the Neo4j database.
             associated_vector_db (Optional[BaseVectorDB]): The vector database to be associated with the graph for data consistency (e.g adding / deleting memories across both.)
+            enable_logging (bool): Whether to enable console logging
 
         Example:
             ```python
@@ -55,6 +58,11 @@ class Neo4jGraphInterface(
         self.database = database
         self.associated_vector_db = associated_vector_db
 
+        # Configure logging
+        self.logger = logging.getLogger(__name__)
+        if enable_logging:
+            logging.basicConfig(level=logging.INFO)
+
     @override
     def get_associated_vector_db(self) -> Optional[BaseVectorDB]:
         """
@@ -66,6 +74,7 @@ class Neo4jGraphInterface(
 
     @override
     async def close(self):
+        self.logger.info("Closing Neo4j driver")
         await self.driver.close()
 
     # Setup method
@@ -74,6 +83,7 @@ class Neo4jGraphInterface(
         """Sets up Neo4j database constraints and indices for the graph schema."""
 
         async def create_constraints_and_indexes(tx):
+            self.logger.info("Creating constraints and indexes")
             # Organization node key
             await tx.run(
                 """
@@ -130,7 +140,9 @@ class Neo4jGraphInterface(
             """
             )
 
+        self.logger.info("Setting up Neo4j database constraints and indices")
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(create_constraints_and_indexes)
+        self.logger.info("Setup complete")

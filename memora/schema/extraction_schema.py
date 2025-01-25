@@ -15,7 +15,7 @@ class ExtractedMemory(BaseModel):
 class MemoryExtractionResponse(BaseModel):
     memories_first_pass: Optional[list[ExtractedMemory]] = Field(
         default_factory=list,
-        description="First pass of useful info written for memory with their source message ids.",
+        description="First pass of useful info written for memory (remember use of #user_#id# or #agent_#id#) with their source message ids.",
     )
     memories_second_pass: Optional[list[ExtractedMemory]] = Field(
         default_factory=list,

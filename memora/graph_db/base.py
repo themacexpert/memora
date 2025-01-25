@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from ..schema.save_memory_schema import MemoriesAndInteraction
+from memora.schema import models
+
+from ..schema.storage_schema import MemoriesAndInteraction
 from ..vector_db.base import BaseVectorDB
 
 
@@ -37,7 +40,7 @@ class BaseGraphDB(ABC):
 
     # Organization methods
     @abstractmethod
-    async def create_organization(self, org_name: str) -> Dict[str, str]:
+    async def create_organization(self, org_name: str) -> models.Organization:
         """
         Creates a new organization in the graph database.
 
@@ -45,18 +48,18 @@ class BaseGraphDB(ABC):
             org_name (str): The name of the organization to create.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
         pass
 
     @abstractmethod
     async def update_organization(
         self, org_id: str, new_org_name: str
-    ) -> Dict[str, str]:
+    ) -> models.Organization:
         """
         Updates an existing organization in the graph database.
 
@@ -65,10 +68,11 @@ class BaseGraphDB(ABC):
             new_org_name (str): The new name for the organization.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
+                + created_at: DateTime object of when the organization was created
         """
         pass
 
@@ -87,7 +91,7 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_organization(self, org_id: str) -> Dict[str, str]:
+    async def get_organization(self, org_id: str) -> models.Organization:
         """
         Gets a specific organization from the graph database.
 
@@ -95,25 +99,25 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization to retrieve.
 
         Returns:
-            Dict[str, str] containing:
+            Organization object containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
         pass
 
     @abstractmethod
-    async def get_all_organizations(self) -> List[Dict[str, str]]:
+    async def get_all_organizations(self) -> List[models.Organization]:
         """
         Gets all organizations from the graph database.
 
         Returns:
-            List[Dict[str, str]] each containing:
+            List[Organization] each containing:
 
                 + org_id: Short UUID string
                 + org_name: Organization name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the organization was created
         """
         pass
 
@@ -121,7 +125,7 @@ class BaseGraphDB(ABC):
     @abstractmethod
     async def create_agent(
         self, org_id: str, agent_label: str, user_id: Optional[str] = None
-    ) -> Dict[str, str]:
+    ) -> models.Agent:
         """
         Creates a new agent in the graph database.
 
@@ -133,20 +137,20 @@ class BaseGraphDB(ABC):
                 user will have this agent.
 
         Returns:
-            Dict[str, str] containing:
+            Agent containing:
 
                 + org_id: Short UUID string
                 + user_id: Optional Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the agent was created
         """
         pass
 
     @abstractmethod
     async def update_agent(
         self, org_id: str, agent_id: str, new_agent_label: str
-    ) -> Dict[str, str]:
+    ) -> models.Agent:
         """
         Updates an existing agent in the graph database.
 
@@ -156,11 +160,13 @@ class BaseGraphDB(ABC):
             new_agent_label (str): New label/name for the agent.
 
         Returns:
-            Dict[str, str] containing:
+            Agent containing:
 
                 + org_id: Short UUID string
+                + user_id: Optional Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
+                + created_at: DateTime object of when the agent was created
         """
         pass
 
@@ -176,7 +182,7 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_agent(self, org_id: str, agent_id: str) -> Dict[str, str]:
+    async def get_agent(self, org_id: str, agent_id: str) -> models.Agent:
         """
         Gets a specific agent belonging to the specified organization from the graph database.
 
@@ -185,18 +191,18 @@ class BaseGraphDB(ABC):
             agent_id (str): Short UUID string identifying the agent to retrieve.
 
         Returns:
-            Dict[str, str] containing:
+            Agent containing:
 
                 + org_id: Short UUID string
-                + user_id: Optional Short UUID string if agent is associated with a user [:HAS_AGENT].
+                + user_id: Optional Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the agent was created
         """
         pass
 
     @abstractmethod
-    async def get_all_org_agents(self, org_id: str) -> List[Dict[str, str]]:
+    async def get_all_org_agents(self, org_id: str) -> List[models.Agent]:
         """
         Gets all agents belonging to the specified organization from the graph database.
 
@@ -204,19 +210,20 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization.
 
         Returns:
-            A List[Dict[str, str]], each containing:
+            A List[Agent], each containing:
 
                 + org_id: Short UUID string
+                + user_id: Optional Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the agent was created
         """
         pass
 
     @abstractmethod
     async def get_all_user_agents(
         self, org_id: str, user_id: str
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Agent]:
         """
         Gets all agents for a user within an organization from the graph database.
 
@@ -225,19 +232,19 @@ class BaseGraphDB(ABC):
             user_id (str): Short UUID string identifying the user.
 
         Returns:
-            A List[Dict[str, str]], each containing:
+            A List[Agent], each containing:
 
                 + org_id: Short UUID string
-                + user_id: Short UUID string
+                + user_id: Optional Short UUID string
                 + agent_id: Short UUID string
                 + agent_label: Agent label/name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the agent was created
         """
         pass
 
     # User methods
     @abstractmethod
-    async def create_user(self, org_id: str, user_name: str) -> Dict[str, str]:
+    async def create_user(self, org_id: str, user_name: str) -> models.User:
         """
         Creates a new user in the graph database.
 
@@ -246,19 +253,19 @@ class BaseGraphDB(ABC):
             user_name (str): Name for the user.
 
         Returns:
-            Dict[str, str] containing:
+            User containing:
 
                 + org_id: Short UUID string
                 + user_id: Short UUID string
                 + user_name: User's name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the user was created
         """
         pass
 
     @abstractmethod
     async def update_user(
         self, org_id: str, user_id: str, new_user_name: str
-    ) -> Dict[str, str]:
+    ) -> models.User:
         """
         Updates an existing user in the graph database.
 
@@ -268,11 +275,12 @@ class BaseGraphDB(ABC):
             new_user_name (str): The new name for the user.
 
         Returns:
-            Dict[str, str] containing:
+            User containing:
 
                 + org_id: Short UUID string
                 + user_id: Short UUID string
                 + user_name: User's name
+                + created_at: DateTime object of when the user was created.
         """
         pass
 
@@ -288,7 +296,7 @@ class BaseGraphDB(ABC):
         pass
 
     @abstractmethod
-    async def get_user(self, org_id: str, user_id: str) -> Dict[str, str]:
+    async def get_user(self, org_id: str, user_id: str) -> models.User:
         """
         Gets a specific user belonging to the specified organization from the graph database.
 
@@ -297,17 +305,17 @@ class BaseGraphDB(ABC):
             user_id (str): Short UUID string identifying the user to retrieve.
 
         Returns:
-            Dict[str, str] containing:
+            User containing:
 
                 + org_id: Short UUID string
                 + user_id: Short UUID string
                 + user_name: User's name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the user was created.
         """
         pass
 
     @abstractmethod
-    async def get_all_users(self, org_id: str) -> List[Dict[str, str]]:
+    async def get_all_org_users(self, org_id: str) -> List[models.User]:
         """
         Gets all users belonging to the specified organization from the graph database.
 
@@ -315,12 +323,12 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization.
 
         Returns:
-            List[Dict[str, str]], each containing:
+            List[User], each containing:
 
                 + org_id: Short UUID string
                 + user_id: Short UUID string
                 + user_name: User's name
-                + created_at: ISO format timestamp
+                + created_at: DateTime object of when the user was created.
         """
         pass
 
@@ -332,7 +340,7 @@ class BaseGraphDB(ABC):
         agent_id: str,
         user_id: str,
         memories_and_interaction: MemoriesAndInteraction,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Creates a new interaction record with associated memories.
 
@@ -346,10 +354,10 @@ class BaseGraphDB(ABC):
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string identifying the created interaction
-                + created_at: ISO format timestamp of when the interaction was created
+                + created_at: DateTime object of when the interaction was created.
         """
         pass
 
@@ -361,7 +369,7 @@ class BaseGraphDB(ABC):
         user_id: str,
         interaction_id: str,
         updated_memories_and_interaction: MemoriesAndInteraction,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Update an existing interaction record and add new memories.
 
@@ -384,17 +392,22 @@ class BaseGraphDB(ABC):
             If the graph database is associated with a vector database, the memories are also stored there for data consistency.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string identifying the updated interaction
-                + updated_at: ISO format timestamp of when the update occurred
+                + updated_at: DateTime object of when the interaction was last updated.
         """
         pass
 
     @abstractmethod
-    async def get_interaction_messages(
-        self, org_id: str, user_id: str, interaction_id: str
-    ) -> List[Dict[str, str]]:
+    async def get_interaction(
+        self,
+        org_id: str,
+        user_id: str,
+        interaction_id: str,
+        with_messages: bool = True,
+        with_memories: bool = True,
+    ) -> models.Interaction:
         """
         Retrieves all messages associated with a specific interaction.
 
@@ -402,34 +415,23 @@ class BaseGraphDB(ABC):
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
             interaction_id (str): Short UUID string identifying the interaction.
+            with_messages (bool): Whether to retrieve messages along with the interaction.
+            with_memories (bool): Whether to also retrieve memories gotten across all occurrences of this interaction.
 
         Returns:
-            List[Dict[str, str]], each containing message details:
+            Interaction containing:
 
-                + role: Role of the message sender (user or agent)
-                + content: String content of the message
-                + msg_position: Position of the message in the interaction
-        """
-        pass
+                + org_id: Short UUID string identifying the organization.
+                + user_id: Short UUID string identifying the user.
+                + agent_id: Short UUID string identifying the agent.
+                + interaction_id: Short UUID string identifying the interaction.
+                + created_at: DateTime object of when the interaction was created.
+                + updated_at: DateTime object of when the interaction was last updated.
+                + messages (if `with_messages` = True): List of messages in the interaction.
+                + memories (if `with_memories` = True): List of memories gotten from all occurrences of this interaction.
 
-    @abstractmethod
-    async def get_all_interaction_memories(
-        self, org_id: str, user_id: str, interaction_id: str
-    ) -> List[Dict[str, str]]:
-        """
-        Retrieves all memories associated with a specific interaction.
-
-        Args:
-            org_id (str): Short UUID string identifying the organization.
-            user_id (str): Short UUID string identifying the user.
-            interaction_id (str): Short UUID string identifying the interaction.
-
-        Returns:
-            List[Dict[str, str]], each containing memory details:
-
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+        Note:
+            A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
@@ -439,27 +441,38 @@ class BaseGraphDB(ABC):
         org_id: str,
         user_id: str,
         with_their_messages: bool = True,
+        with_their_memories: bool = True,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Interaction]:
         """
         Retrieves all interactions for a specific user in an organization.
 
         Note:
-            Interaction are sorted in descending order by their updated at datetime. (So most recent interactions are first).
+            Interactions are sorted in descending order by their updated at datetime. (So most recent interactions are first).
 
         Args:
             org_id (str): Short UUID string identifying the organization.
             user_id (str): Short UUID string identifying the user.
-            with_their_messages (bool): Whether to include messages of the interactions.
+            with_their_messages (bool): Whether to also retrieve messages of an interaction.
+            with_their_memories (bool): Whether to also retrieve memories gotten across all occurrences of an interaction.
             skip (int): Number of interactions to skip. (Useful for pagination)
             limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
 
         Returns:
-            List[Dict[str, str]], each dict containing interaction details and messages (or [] if `with_their_messages` is False):
+            List[Interaction], each containing an Interaction with:
 
-                + interaction: Interaction Data like created_at, updated_at, interaction_id, ...
-                + messages: List of messages in order (each message is a dict with role, content, msg_position)
+                + org_id: Short UUID string identifying the organization.
+                + user_id: Short UUID string identifying the user.
+                + agent_id: Short UUID string identifying the agent.
+                + interaction_id: Short UUID string identifying the interaction.
+                + created_at: DateTime object of when the interaction was created.
+                + updated_at: DateTime object of when the interaction was last updated.
+                + messages (if `with_their_messages` = True): List of messages in the interaction.
+                + memories (if `with_their_memories` = True): List of memories gotten from all occurrences of this interaction.
+
+        Note:
+            A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
@@ -502,11 +515,12 @@ class BaseGraphDB(ABC):
         pass
 
     # Memory methods
-    def fetch_user_memories_resolved(
+    @abstractmethod
+    async def fetch_user_memories_resolved(
         self, org_user_mem_ids: List[Dict[str, str]]
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Memory]:
         """
-        Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
+        Fetches memories from the GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
         This method performs several operations:
           1. Retrieves memories using (org_id, user_id, memory_ids)
@@ -517,30 +531,37 @@ class BaseGraphDB(ABC):
             org_user_mem_ids (List[Dict[str, str]]): List of Dicts containing org, user, and memory ids of the memories to fetch and process
 
         Returns:
-            List[Dict[str, str]] containing memory details:
+            List[Memory] containing memory details:
 
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the resolved memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+                + org_id: Short UUID string identifying the organization
+                + agent_id: Short UUID string identifying the agent
+                + user_id: Short UUID string identifying the user
+                + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                + memory_id: Full UUID string identifying the memory
+                + memory: The resolved memory
+                + obtained_at: DateTime object of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
 
         Example:
             ```python
             >>> org_user_mem_ids = [{'memory_id': '443ac3a8-fe87-49a4-93d2-05d3eb58ddeb', 'org_id': 'gmDr4sUiWMNqbGAiV8ijbU', 'user_id': 'CcyKXxhi2skEcDpRzNZim7'}, ...]
             >>> memories = graphInstance.fetch_memories_resolved(org_user_mem_ids)
-            >>> print([memoryObj['memory'] for memoryObj in memories])
+            >>> print([memoryObj.memory for memoryObj in memories])
             ["John asked for help with a wedding ring", "Sarah is allergic to peanuts"]
             ```
 
         Note:
-            Org, user, and memory IDs are typically retrieved from a vector database before being passed to this method.
+            - Org, user, and memory IDs are typically retrieved from a vector database before being passed to this method.
+            - A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
-    def fetch_user_memories_resolved_batch(
+    @abstractmethod
+    async def fetch_user_memories_resolved_batch(
         self, batch_org_user_mem_ids: List[List[Dict[str, str]]]
-    ) -> List[List[Dict[str, str]]]:
+    ) -> List[List[models.Memory]]:
         """
-        Fetches memories from the Neo4j GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
+        Fetches memories from the GraphDB by their IDs, resolves any contrary updates, and replaces user/agent placeholders with actual names.
 
         This method performs several operations:
           1. Retrieves memories using (org_id, user_id, memory_ids)
@@ -551,29 +572,35 @@ class BaseGraphDB(ABC):
             batch_org_user_mem_ids (List[List[Dict[str, str]]]): List of lists containing Dicts with org, user, and memory ids of the memories to fetch and process
 
         Returns:
-            List[List[Dict[str, str]]] with memory details:
+            List[List[Memory]] with memory details:
 
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the resolved memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+                + org_id: Short UUID string identifying the organization
+                + agent_id: Short UUID string identifying the agent
+                + user_id: Short UUID string identifying the user
+                + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                + memory_id: Full UUID string identifying the memory
+                + memory: The resolved memory
+                + obtained_at: DateTime object of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
 
         Example:
             ```python
             >>> batch_org_user_mem_ids = [[{"memory_id": "413ac3a8-fe87-49a4-93d2-05d3eb58ddeb", "org_id": "gmDr4sUiWMNqbGAiV8ijbU", "user_id": "CcyKXxhi2skEcDpRzNZim7"}, ...], [{...}, ...]]
             >>> batch_memories = graphInstance.fetch_memories_resolved_batch(batch_org_user_mem_ids)
-            >>> print([[memoryObj['memory'] for memoryObj in memories] for memories in batch_memories])
+            >>> print([[memoryObj.memory for memoryObj in memories] for memories in batch_memories])
             [["John asked for help with a wedding ring", "Sarah is allergic to peanuts"], ["John is about to propose to Sarah"]]
             ```
 
         Note:
-            Batch org, user, and memory IDs are typically retrieved from a vector database before being passed to this method.
+            - Batch org, user, and memory IDs are typically retrieved from a vector database before being passed to this method.
+            - A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
     @abstractmethod
     async def get_user_memory(
         self, org_id: str, user_id: str, memory_id: str
-    ) -> Dict[str, str]:
+    ) -> models.Memory:
         """
         Retrieves a specific memory.
 
@@ -583,18 +610,26 @@ class BaseGraphDB(ABC):
             memory_id (str): UUID string identifying the memory
 
         Returns:
-            Dict[str, str] containing memory details:
+            Memory containing memory details:
 
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+                + org_id: Short UUID string identifying the organization
+                + agent_id: Short UUID string identifying the agent
+                + user_id: Short UUID string identifying the user
+                + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                + memory_id: Full UUID string identifying the memory
+                + memory: The resolved memory
+                + obtained_at: DateTime object of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
+
+        Note:
+            - The memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
     @abstractmethod
     async def get_user_memory_history(
         self, org_id: str, user_id: str, memory_id: str
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Memory]:
         """
         Retrieves the history of a specific memory.
 
@@ -604,34 +639,50 @@ class BaseGraphDB(ABC):
             memory_id (str): UUID string identifying the memory
 
         Returns:
-            List[Dict[str, str]] containing the history of memory details in descending order (starting with the current version, to the oldest version):
+            List[Memory] containing the history of memory details in descending order (starting with the current version, to the oldest version):
 
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+                + org_id: Short UUID string identifying the organization
+                + agent_id: Short UUID string identifying the agent
+                + user_id: Short UUID string identifying the user
+                + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                + memory_id: Full UUID string identifying the memory
+                + memory: The resolved memory
+                + obtained_at: DateTime object of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
+
+        Note:
+            - A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 
     @abstractmethod
     async def get_all_user_memories(
         self, org_id: str, user_id: str, agent_id: Optional[str] = None
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Memory]:
         """
         Retrieves all memories associated with a specific user.
 
         Args:
             org_id (str): Short UUID string identifying the organization
             user_id (str): Short UUID string identifying the user
-            agent_id (Optional[str]): Optional Short UUID string identifying the agent. If provided, only memories obtained from
+            agent_id (Optional[str]): Optional short UUID string identifying the agent. If provided, only memories obtained from
                 interactions with this agent are returned.
                 Otherwise, all memories associated with the user are returned.
 
         Returns:
-            List[Dict[str, str]] containing memory details:
+            List[Memory] containing memory details:
 
-                + memory_id: UUID string identifying the memory
-                + memory: String content of the memory
-                + obtained_at: ISO format timestamp of when the memory was obtained
+                + org_id: Short UUID string identifying the organization
+                + agent_id: Short UUID string identifying the agent
+                + user_id: Short UUID string identifying the user
+                + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                + memory_id: Full UUID string identifying the memory
+                + memory: The resolved memory
+                + obtained_at: DateTime object of when the memory was obtained
+                + message_sources: List of messages in the interaction that triggered the memory
+
+        Note:
+            - A memory won't have a message source, if its interaction was updated with a conflicting conversation thread that lead to truncation of the former thread. See `graph.update_interaction_and_memories`
         """
         pass
 

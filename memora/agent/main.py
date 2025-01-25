@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
+import memora.schema.models as models
 from memora.graph_db.base import BaseGraphDB
 from memora.llm_backends.base import BaseBackendLLM
 from memora.prompts import (
@@ -15,11 +16,13 @@ from memora.prompts import (
     MSG_MEMORY_SEARCH_PROMPT,
     MSG_MEMORY_SEARCH_TEMPLATE,
 )
-from memora.schema import (
-    ContraryMemoryToStore,
-    MemoriesAndInteraction,
+from memora.schema.extraction_schema import (
     MemoryComparisonResponse,
     MemoryExtractionResponse,
+)
+from memora.schema.storage_schema import (
+    ContraryMemoryToStore,
+    MemoriesAndInteraction,
     MemoryToStore,
 )
 from memora.vector_db.base import BaseVectorDB, MemorySearchScope
@@ -125,7 +128,7 @@ class Memora:
         self,
         message: str,
         search_queries_used: List[str],
-        retrieved_memories: List[Dict[str, str]],
+        retrieved_memories: List[models.Memory],
         current_datetime: datetime = datetime.now(),
     ) -> Set[str] | None:
         """
@@ -134,7 +137,7 @@ class Memora:
         Args:
             message (str): The message that triggered the search queries and retrieved memories.
             search_queries_used (List[str]): List of search queries used.
-            retrieved_memories (List[Dict[str, str]]): List of retrieved memories.
+            retrieved_memories (List[Memory]): List of retrieved memories.
             current_datetime (datetime): Current datetime.
 
         Returns:
@@ -153,6 +156,12 @@ class Memora:
         )
 
         self.logger.info("Calling memory search model for filtering...")
+
+        # Just use only needed information from retrieved memories.
+        retrieved_memories: List[Dict[str, str]] = [
+            memoryObj.id_memory_and_timestamp_dict() for memoryObj in retrieved_memories
+        ]
+
         response = await self.memory_search_model(
             messages=[
                 {
@@ -206,7 +215,7 @@ class Memora:
         filter_out_memory_ids_set: Set[str] = set(),
         agent_id: Optional[str] = None,
         search_across_agents: bool = True,
-    ) -> List[Dict[str, str]]:
+    ) -> List[models.Memory]:
         """
         Retrieve memories corresponding to the search queries for a message.
 
@@ -219,7 +228,7 @@ class Memora:
             search_across_agents (bool): Whether to search memories across all agents.
 
         Returns:
-            List[Dict[str, str]]: List of retrieved memories.
+            List[Memory]: List of retrieved memories.
         """
 
         self.logger.info(f"Searching memories for user {user_id} in org {org_id}")
@@ -238,20 +247,24 @@ class Memora:
 
         # Flatten and sort memories by score across the batch results
         sorted_memories = sorted(
-            (memory for result in batch_results for memory in result),
-            key=lambda x: x["score"],
+            [
+                memory_and_score
+                for result in batch_results
+                for memory_and_score in result
+            ],
+            key=lambda x: x[1],
             reverse=True,
         )
 
         # Extract the (org, user and memory ids), filtering out the ones to be excluded
         org_user_mem_ids = [
             {
-                "memory_id": memory["memory_id"],
-                "user_id": memory["user_id"],
-                "org_id": memory["org_id"],
+                "memory_id": memory[0].memory_id,
+                "user_id": memory[0].user_id,
+                "org_id": memory[0].org_id,
             }
             for memory in sorted_memories
-            if memory["memory_id"] not in filter_out_memory_ids_set
+            if memory[0].memory_id not in filter_out_memory_ids_set
         ]
 
         if not org_user_mem_ids:
@@ -271,7 +284,7 @@ class Memora:
         agent_id: Optional[str] = None,
         memory_search_scope: MemorySearchScope = MemorySearchScope.USER,
         search_across_agents: bool = True,
-    ) -> List[List[Dict[str, str]]]:
+    ) -> List[List[models.Memory]]:
         """
         Retrieve memories corresponding to a list of search queries.
 
@@ -285,7 +298,7 @@ class Memora:
             search_across_agents (bool): Whether to search memories across all agents.
 
         Returns:
-            List[List[Dict[str, str]]]: Batch results of retrieved memories.
+            List[List[Memory]]: Batch results of retrieved memories.
         """
 
         self.logger.info(f"Batch searching memories in org {org_id}")
@@ -305,12 +318,12 @@ class Memora:
         batch_org_user_mem_ids = [
             [
                 {
-                    "memory_id": memory["memory_id"],
-                    "user_id": memory["user_id"],
-                    "org_id": memory["org_id"],
+                    "memory_id": memory[0].memory_id,
+                    "user_id": memory[0].user_id,
+                    "org_id": memory[0].org_id,
                 }
                 for memory in result
-                if memory["memory_id"] not in filter_out_memory_ids_set
+                if memory[0].memory_id not in filter_out_memory_ids_set
             ]
             for result in batch_results
         ]
@@ -336,9 +349,15 @@ class Memora:
         extract_agent_memories: bool = False,
         update_across_agents: bool = True,
         max_retries: int = 3,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Save a new interaction or update an existing one, and the extracted memories.
+
+        FOR UPDATES -> Will Compare updated interaction with existing one:
+            - If differences are found, truncates existing record from that point and
+            replaces with updated version. Old memories from truncated message(s)
+            remain but become standalone (no longer linked to truncated messages).
+            - If no differences, appends new messages from the update.
 
         Args:
             org_id (str): Organization ID.
@@ -352,10 +371,10 @@ class Memora:
             max_retries (int): Maximum number of retries.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string
-                + created_at or updated_at: ISO timestamp
+                + created_at or updated_at: Datetime object
 
         Raises:
             Exception: If saving the interaction and its memories fails after max retries.
@@ -376,11 +395,21 @@ class Memora:
                     self.logger.debug(
                         f"Fetching previously extracted memories for interaction {interaction_id}"
                     )
-                    previously_extracted_memories: List[Dict[str, str]] = (
-                        await self.graph.get_all_interaction_memories(
-                            org_id, user_id, interaction_id
+                    previously_extracted_memories: List[Dict[str, str]] = [
+                        memoryObj.memory_and_timestamp_dict()
+                        for memoryObj in (
+                            (
+                                await self.graph.get_interaction(
+                                    org_id,
+                                    user_id,
+                                    interaction_id,
+                                    with_messages=False,
+                                    with_memories=True,
+                                )
+                            ).memories
+                            or []
                         )
-                    )
+                    ]
 
                     self.logger.debug(
                         f"Found {len(previously_extracted_memories)} previously extracted memories"
@@ -389,12 +418,10 @@ class Memora:
                     system_content = MEMORY_EXTRACTION_UPDATE_SYSTEM_PROMPT.format(
                         day_of_week=current_datetime.strftime("%A"),
                         current_datetime_str=current_datetime.isoformat(),
-                        agent_label=agent["agent_label"],
-                        user_name=user["user_name"],
+                        agent_label=agent.agent_label,
+                        user_name=user.user_name,
                         extract_for_agent=(
-                            f"and {agent['agent_label']}"
-                            if extract_agent_memories
-                            else ""
+                            f"and {agent.agent_label}" if extract_agent_memories else ""
                         ),
                         previous_memories=str(previously_extracted_memories),
                         schema=MemoryExtractionResponse.model_json_schema(),
@@ -404,12 +431,10 @@ class Memora:
                     system_content = MEMORY_EXTRACTION_SYSTEM_PROMPT.format(
                         day_of_week=current_datetime.strftime("%A"),
                         current_datetime_str=current_datetime.isoformat(),
-                        agent_label=agent["agent_label"],
-                        user_name=user["user_name"],
+                        agent_label=agent.agent_label,
+                        user_name=user.user_name,
                         extract_for_agent=(
-                            f"and {agent['agent_label']}"
-                            if extract_agent_memories
-                            else ""
+                            f"and {agent.agent_label}" if extract_agent_memories else ""
                         ),
                         schema=MemoryExtractionResponse.model_json_schema(),
                     )
@@ -529,8 +554,8 @@ class Memora:
                         "content": COMPARE_EXISTING_AND_NEW_MEMORIES_SYSTEM_PROMPT.format(
                             day_of_week=current_datetime.strftime("%A"),
                             current_datetime_str=current_datetime.isoformat(),
-                            agent_placeholder=f"agent_{agent['agent_id']}",
-                            user_placeholder=f"user_{user['user_id']}",
+                            agent_placeholder=f"agent_{agent.agent_id}",
+                            user_placeholder=f"user_{user.user_id}",
                             schema=MemoryComparisonResponse.model_json_schema(),
                         ),
                     },
@@ -643,7 +668,7 @@ class Memora:
 
     async def _get_user_and_agent(
         self, org_id: str, user_id: str, agent_id: str
-    ) -> Tuple[Dict, Dict]:
+    ) -> Tuple[models.User, models.Agent]:
         """
         Fetch user and agent data.
 
@@ -653,7 +678,7 @@ class Memora:
             agent_id (str): Agent ID.
 
         Returns:
-            Tuple[Dict, Dict]: Tuple containing the user and agent data.
+            Tuple[User, Agent]: Tuple containing the user and agent data.
         """
 
         self.logger.debug(f"Fetching user {user_id} and agent {agent_id} data")
@@ -668,15 +693,15 @@ class Memora:
         return user, agent
 
     def _process_extracted_memories(
-        self, response: MemoryExtractionResponse, user: Dict, agent: Dict
+        self, response: MemoryExtractionResponse, user: models.User, agent: models.Agent
     ) -> Tuple[List[str], List[List[int]]]:
         """
         Get every memory extracted, their source messages and insert placeholders for user and agent.
 
         Args:
             response (MemoryExtractionResponse): Response from the memory extraction model.
-            user (Dict): User data.
-            agent (Dict): Agent data.
+            user (User): User data.
+            agent (Agent): Agent data.
 
         Returns:
             Tuple[List[str], List[List[int]]]: Extracted memories and their source messages.
@@ -692,8 +717,8 @@ class Memora:
         ):
             for memory in memory_list:
                 memory_text = memory.memory.replace(
-                    "#user_#id#", f"user_{user['user_id']}"
-                ).replace("#agent_#id#", f"agent_{agent['agent_id']}")
+                    "#user_#id#", f"user_{user.user_id}"
+                ).replace("#agent_#id#", f"agent_{agent.agent_id}")
                 candidate_memories.append(memory_text)
                 candidate_memories_msg_sources.append(memory.msg_source_ids)
 
@@ -710,7 +735,7 @@ class Memora:
         filter_out_memory_ids_set: Set[str] = set(),
         search_memories_across_agents: bool = True,
         enable_final_model_based_memory_filter: bool = False,
-    ) -> Tuple[List[Dict[str, str]] | None, List[str] | None]:
+    ) -> Tuple[List[models.Memory] | None, List[str] | None]:
         """
         Recall memories for the given message.
 
@@ -726,12 +751,18 @@ class Memora:
             enable_final_model_based_memory_filter (bool): 📝 Experimental feature; enables filtering of retrieved memories using a model. Note that a small model (~ 8B or lower) might not select some memories that are indirectly needed.
 
         Returns:
-            Tuple[List[Dict[str, str]] | None, List[str] | None]:
+            Tuple[List[Memory] | None, List[str] | None]:
 
-                + List[Dict[str, str]]: Containing Memories to be recalled (None if no relevant memories found):
+                + List[Memory]: Containing Memories to be recalled (None if no relevant memories found):
 
-                    + memory (str): Memory content
-                    + obtained_at (str): ISO format timestamp
+                    + org_id: Short UUID string identifying the organization
+                    + agent_id: Short UUID string identifying the agent
+                    + user_id: Short UUID string identifying the user
+                    + interaction_id: Short UUID string identifying the interaction the memory was sourced from
+                    + memory_id: Full UUID string identifying the memory
+                    + memory: The resolved memory
+                    + obtained_at: DateTime object of when the memory was obtained
+                    + message_sources: List of messages in the interaction that triggered the memory
 
                 + List[str]: Just the memory IDs (empty list [] if no memory was recalled).
         """
@@ -777,11 +808,8 @@ class Memora:
 
         if not enable_final_model_based_memory_filter:
             return (
-                [
-                    {"memory": memory["memory"], "obtained_at": memory["obtained_at"]}
-                    for memory in retrieved_memories
-                ],  # memories.
-                [memory["memory_id"] for memory in retrieved_memories],  # memory ids.
+                retrieved_memories,  # memories.
+                [memory.memory_id for memory in retrieved_memories],  # memory ids.
             )
 
         self.logger.info("Applying model-based memory filtering")
@@ -794,11 +822,8 @@ class Memora:
         ):  # The LLM was unable to filter just needed memories.
             self.logger.info("Model-based filtering failed")
             return (
-                [
-                    {"memory": memory["memory"], "obtained_at": memory["obtained_at"]}
-                    for memory in retrieved_memories
-                ],  # memories.
-                [memory["memory_id"] for memory in retrieved_memories],  # memory ids.
+                retrieved_memories,  # memories.
+                [memory.memory_id for memory in retrieved_memories],  # memory ids.
             )
 
         if (
@@ -807,9 +832,9 @@ class Memora:
             self.logger.info("Model-based filtering returned no memories")
             return None, None
 
-        memory_dict = {memory["memory_id"]: memory for memory in retrieved_memories}
+        memory_dict = {memory.memory_id: memory for memory in retrieved_memories}
         selected_memories = [
-            {"memory": memoryObj["memory"], "obtained_at": memoryObj["obtained_at"]}
+            memoryObj
             for memory_id in filtered_memory_ids
             if (memoryObj := memory_dict.get(memory_id)) is not None
         ]
@@ -817,4 +842,4 @@ class Memora:
         self.logger.info(
             f"Selected {len(selected_memories)} memories after model-based filtering"
         )
-        return selected_memories, filtered_memory_ids
+        return selected_memories, list(filtered_memory_ids)
