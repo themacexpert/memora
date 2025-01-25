@@ -1,24 +1,30 @@
 ![Memora](https://drive.google.com/uc?export=view&id=1u1nyA8OQBCYtAIbYtbRCtmF7Z-YJZ1AZ)
 
-<p align="center">
-    <a href="https://pepy.tech/projects/memora-core">
-        <img src="https://static.pepy.tech/badge/memora-core" alt="Memora PyPI Downloads">
-    </a>
-    <a href="https://pypi.org/project/memora-core" target="_blank">
-        <img src="https://img.shields.io/pypi/v/memora-core?color=%2334D058&label=pypi%20package" alt="Package version">
-    </a>
-    <a href="https://github.com/elzai/memora/blob/main/LICENSE">    
-        <img src="https://img.shields.io/badge/License-Apache%202.0-ac878a?style=flat-square" alt="License">
-    </a>
-</p>
+<div align="center">
+    <div align="center">
+        <a href="https://pepy.tech/projects/memora-core">
+            <img src="https://static.pepy.tech/badge/memora-core" alt="Memora PyPI Downloads">
+        </a>
+        <a href="https://pypi.org/project/memora-core" target="_blank">
+            <img src="https://img.shields.io/pypi/v/memora-core?color=%2334D058&label=pypi%20package" alt="Package version">
+        </a>
+        <a href="https://github.com/elzai/memora/blob/main/LICENSE">    
+            <img src="https://img.shields.io/badge/License-Apache%202.0-ac878a?style=flat-square" alt="License">
+        </a>
+    </div>
+    <div style="margin-top: 10px; margin-bottom: 20px">
+        <a target="_blank" href="https://betalist.com/startups/memora?utm_campaign=badge-memora&amp;utm_medium=badge&amp;utm_source=badge-featured">
+            <img alt="Memora - Replicating the Human Memory for every Personalized AI | BetaList" width="156" height="54" style="width: 156px; height: 54px" src="https://betalist.com/badges/featured?id=116881&amp;theme=color">
+        </a>
+    </div>
+</div>
+        
 
 **[📚 Checkout Documentation](https://elzai.github.io/memora/)**
 
-> [!IMPORTANT]
-> **This project is NOT associated with any cryptocurrency, token, or related offerings on X (Twitter) or any other platform.**  
-> If you see any claims suggesting otherwise, they are fake and unrelated to this project. Please report such claims to help protect others. Thank you!
-
 When we interact with people 🗣️👂, we naturally remember details from past interactions 💭, feelings 😜😢, and shared experiences 🤝. That's what makes us human. **We're bringing this same ability to AI, helping it recall just like us.**
+
+***Give the [github repo](https://github.com/ELZAI/memora/) a starhug ⭐️—it’s feeling a lil’ lonely 🥺***
 
 ## Key Features
 

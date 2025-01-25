@@ -69,7 +69,7 @@ class QdrantDB(BaseVectorDB):
         former_collection_name: str = "memory_collection",
         new_collection_name: str = "memory_collection_v0_2",
         delete_former_collection_after: bool = True,
-        batch_size: int = 100,
+        batch_size: int = 50,
         parallel: Optional[int] = None,
     ):
         """
@@ -82,8 +82,8 @@ class QdrantDB(BaseVectorDB):
             former_collection_name (str): Name of the former collection in the vector database, if you didn't explicitly specify this in earlier version it will be `memory_collection`.
             new_collection_name (str): Name for the new Qdrant collection. Defaults to `memory_collection_v0_2`.
             delete_former_collection_after (bool): If True, delete the former collection after migration. Defaults to True.
-            batch_size (int): Number of records to fetch and migrate in each batch. Defaults to 100.
-            parallel (Optional[int]): How many parallel workers to use for embedding. Defaults to None. If number is specified, Qdrant will use a data-parallel process. Note: Parallel processing is recommended only for large collections (tens of thousands of memories) and large batch sizes (above 500). For smaller collections or batch sizes, parallel processing may be slower.
+            batch_size (int): Number of records to fetch and migrate in each batch. Defaults to 50.
+            parallel (Optional[int]): How many parallel workers to use for embedding. Defaults to None. If number is specified, Qdrant will use a data-parallel process. Note: Parallel processing is recommended only for large collections (tens of thousands of memories) and large batch sizes (above 100). For smaller collections or batch sizes, parallel processing may be slower.
         """
 
         self.logger.info(
