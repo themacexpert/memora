@@ -5,7 +5,7 @@ import neo4j.exceptions
 import shortuuid
 from typing_extensions import override
 
-import memora.schema.models as models
+from memora.schema import models
 
 from ..base import BaseGraphDB
 
@@ -32,6 +32,7 @@ class Neo4jOrganization(BaseGraphDB):
             raise TypeError("`org_name` must be a string and have a value.")
 
         org_id = shortuuid.uuid()
+        self.logger.info(f"Creating organization with ID {org_id}")
 
         async def create_org_tx(tx):
             result = await tx.run(
@@ -57,8 +58,10 @@ class Neo4jOrganization(BaseGraphDB):
             org_data = await session.execute_write(create_org_tx)
 
             if org_data is None:
+                self.logger.info(f"Failed to create organization {org_id}")
                 raise neo4j.exceptions.Neo4jError("Failed to create organization.")
 
+            self.logger.info(f"Successfully created organization {org_id}")
             return models.Organization(
                 org_id=org_data["org_id"],
                 org_name=org_data["org_name"],
@@ -91,6 +94,8 @@ class Neo4jOrganization(BaseGraphDB):
                 "Both `org_id` and `new_org_name` must be a string and have a value."
             )
 
+        self.logger.info(f"Updating organization {org_id}")
+
         async def update_org_tx(tx):
             result = await tx.run(
                 """
@@ -112,10 +117,12 @@ class Neo4jOrganization(BaseGraphDB):
             org_data = await session.execute_write(update_org_tx)
 
             if org_data is None:
+                self.logger.info(f"Organization {org_id} not found")
                 raise neo4j.exceptions.Neo4jError(
                     "Organization (`org_id`) does not exist."
                 )
 
+            self.logger.info(f"Successfully updated organization {org_id}")
             return models.Organization(
                 org_id=org_data["org_id"],
                 org_name=org_data["org_name"],
@@ -138,6 +145,8 @@ class Neo4jOrganization(BaseGraphDB):
         if not isinstance(org_id, str) or not org_id:
             raise TypeError("`org_id` must be a string and have a value.")
 
+        self.logger.info(f"Deleting organization {org_id} and all associated data")
+
         async def delete_org_tx(tx):
             # Delete all nodes and relationships associated with the org
             await tx.run(
@@ -156,6 +165,7 @@ class Neo4jOrganization(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_org_tx)
+            self.logger.info(f"Successfully deleted organization {org_id}")
 
     @override
     async def get_organization(self, org_id: str) -> models.Organization:
@@ -193,6 +203,7 @@ class Neo4jOrganization(BaseGraphDB):
             org_data = await session.execute_read(get_org_tx)
 
             if org_data is None:
+                self.logger.info(f"Organization {org_id} not found")
                 raise neo4j.exceptions.Neo4jError(
                     "Organization (`org_id`) does not exist."
                 )
@@ -215,6 +226,8 @@ class Neo4jOrganization(BaseGraphDB):
                 + org_name: Organization name
                 + created_at: DateTime object of when the organization was created
         """
+
+        self.logger.info("Getting all organizations")
 
         async def get_all_org_tx(tx):
             result = await tx.run(

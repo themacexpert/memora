@@ -5,7 +5,7 @@ import neo4j.exceptions
 import shortuuid
 from typing_extensions import override
 
-import memora.schema.models as models
+from memora.schema import models
 
 from ..base import BaseGraphDB
 
@@ -36,6 +36,7 @@ class Neo4jUser(BaseGraphDB):
             )
 
         user_id = shortuuid.uuid()
+        self.logger.info(f"Creating new user with ID {user_id}")
 
         async def create_user_tx(tx):
             result = await tx.run(
@@ -73,6 +74,7 @@ class Neo4jUser(BaseGraphDB):
             user_data = await session.execute_write(create_user_tx)
 
             if user_data is None:
+                self.logger.info(f"Failed to create user {user_id}")
                 raise neo4j.exceptions.Neo4jError("Failed to create user.")
 
             return models.User(
@@ -111,6 +113,8 @@ class Neo4jUser(BaseGraphDB):
                 "`org_id`, `user_id` and `new_user_name` must be strings and have a value."
             )
 
+        self.logger.info(f"Updating user {user_id}")
+
         async def update_user_tx(tx):
             result = await tx.run(
                 """
@@ -132,6 +136,9 @@ class Neo4jUser(BaseGraphDB):
             user_data = await session.execute_write(update_user_tx)
 
             if user_data is None:
+                self.logger.info(
+                    f"Failed to update user {user_id}: User does not exist"
+                )
                 raise neo4j.exceptions.Neo4jError(
                     "User (`org_id`, `user_id`) does not exist."
                 )
@@ -155,6 +162,8 @@ class Neo4jUser(BaseGraphDB):
 
         if not all(param and isinstance(param, str) for param in (org_id, user_id)):
             raise ValueError("`org_id` and `user_id` must be strings and have a value.")
+
+        self.logger.info(f"Deleting user {user_id}")
 
         async def delete_user_tx(tx):
             await tx.run(
@@ -216,6 +225,7 @@ class Neo4jUser(BaseGraphDB):
             user_data = await session.execute_read(get_user_tx)
 
             if user_data is None:
+                self.logger.info(f"Failed to get user {user_id}: User does not exist")
                 raise neo4j.exceptions.Neo4jError(
                     "User (`org_id`, `user_id`) does not exist."
                 )
@@ -246,6 +256,8 @@ class Neo4jUser(BaseGraphDB):
 
         if not isinstance(org_id, str) or not org_id:
             raise ValueError("`org_id` must be a string and have a value.")
+
+        self.logger.info(f"Getting all users for organization {org_id}")
 
         async def get_users_tx(tx):
             result = await tx.run(

@@ -6,7 +6,7 @@ import neo4j
 import shortuuid
 from typing_extensions import override
 
-import memora.schema.models as models
+from memora.schema import models
 from memora.schema.storage_schema import MemoriesAndInteraction
 
 from ..base import BaseGraphDB
@@ -274,6 +274,10 @@ class Neo4jInteraction(BaseGraphDB):
             for _ in range(len(memories_and_interaction.contrary_memories))
         ]
 
+        self.logger.info(
+            f"Saving interaction {interaction_id} for user {user_id} with agent {agent_id}"
+        )
+
         async def save_tx(tx):
 
             # Create interaction and connect to date of occurance.
@@ -307,12 +311,16 @@ class Neo4jInteraction(BaseGraphDB):
             )
 
             if not memories_and_interaction.interaction:
+                self.logger.info(
+                    f"No messages to save for interaction {interaction_id}"
+                )
                 return (
                     interaction_id,
                     memories_and_interaction.interaction_date.isoformat(),
                 )
 
             # Add the messages to the interaction.
+            self.logger.info(f"Adding messages to interaction {interaction_id}")
             await self._add_messages_to_interaction_from_top(
                 tx,
                 org_id,
@@ -323,6 +331,7 @@ class Neo4jInteraction(BaseGraphDB):
 
             if new_memory_ids or new_contrary_memory_ids:
                 # Add the all memories (new & new contrary) and connect to their interaction message source.
+                self.logger.info("Adding memories and linking to their message source")
                 await self._add_memories_with_their_source_links(
                     tx,
                     org_id,
@@ -336,6 +345,9 @@ class Neo4jInteraction(BaseGraphDB):
 
             if new_contrary_memory_ids:
                 # Link the new contary memories as updates to the old memory they contradicted.
+                self.logger.info(
+                    "Linking contrary memories to existing memories they contradicted"
+                )
                 await self._link_update_contrary_memories_to_existing_memories(
                     tx,
                     org_id,
@@ -371,7 +383,11 @@ class Neo4jInteraction(BaseGraphDB):
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            return await session.execute_write(save_tx)
+            result = await session.execute_write(save_tx)
+            self.logger.info(
+                f"Successfully saved interaction {interaction_id} for user {user_id}"
+            )
+            return result
 
     @override
     async def update_interaction_and_memories(
@@ -417,6 +433,10 @@ class Neo4jInteraction(BaseGraphDB):
                 "`org_id`, `user_id` and `agent_id` must be strings and have a value."
             )
 
+        self.logger.info(
+            f"Updating interaction {interaction_id} for user {user_id} with agent {agent_id}"
+        )
+
         new_memory_ids = [
             str(uuid.uuid4())
             for _ in range(len(updated_memories_and_interaction.memories))
@@ -440,12 +460,16 @@ class Neo4jInteraction(BaseGraphDB):
 
             # Case 1: Empty updated interaction - delete all existing messages
             if updated_interaction_length == 0:
+                self.logger.info(
+                    f"Truncating all messages from interaction {interaction_id} as updated interaction is empty"
+                )
                 await self._truncate_interaction_message_below_point(
                     tx, org_id, user_id, interaction_id, truncation_point_inclusive=0
                 )
 
             # Case 2: Empty existing interaction - add all new messages from the top
             elif existing_interaction_length == 0:
+                self.logger.info(f"Adding all messages to interaction {interaction_id}")
                 await self._add_messages_to_interaction_from_top(
                     tx,
                     org_id,
@@ -483,6 +507,9 @@ class Neo4jInteraction(BaseGraphDB):
                 # Handle different cases based on where the difference was found
                 if truncate_from == -1:
                     # Append the new messages at the bottom.
+                    self.logger.info(
+                        f"Appending new messages to interaction {interaction_id}"
+                    )
                     await self._append_messages_to_interaction(
                         tx,
                         org_id,
@@ -493,6 +520,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from == 0:
                     # Complete replacement needed
+                    self.logger.info(
+                        f"Storing latest interaction {interaction_id} messages"
+                    )
                     await self._truncate_interaction_message_below_point(
                         tx,
                         org_id,
@@ -510,6 +540,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 elif truncate_from > 0:
                     # Partial replacement needed
+                    self.logger.info(
+                        f"Updating messages in interaction {interaction_id} from position {truncate_from}"
+                    )
                     await self._truncate_interaction_message_below_point(
                         tx, org_id, user_id, interaction_id, truncate_from
                     )
@@ -522,6 +555,7 @@ class Neo4jInteraction(BaseGraphDB):
                     )
 
             if new_memory_ids or new_contrary_memory_ids:
+                self.logger.info("Adding memories and linking to their source messages")
                 await self._add_memories_with_their_source_links(
                     tx,
                     org_id,
@@ -534,6 +568,9 @@ class Neo4jInteraction(BaseGraphDB):
                 )
 
             if new_contrary_memory_ids:
+                self.logger.info(
+                    "Linking contrary memories to existing memories they contradicted"
+                )
                 await self._link_update_contrary_memories_to_existing_memories(
                     tx,
                     org_id,
@@ -594,7 +631,9 @@ class Neo4jInteraction(BaseGraphDB):
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            return await session.execute_write(update_tx)
+            result = await session.execute_write(update_tx)
+            self.logger.info(f"Successfully updated interaction {interaction_id}")
+            return result
 
     @override
     async def get_interaction(
@@ -638,6 +677,10 @@ class Neo4jInteraction(BaseGraphDB):
             raise ValueError(
                 "`org_id`, `user_id` and `interaction_id` must be strings and have a value."
             )
+
+        self.logger.info(
+            f"Retrieving interaction {interaction_id} for user {user_id} with messages={with_messages} and memories={with_memories}"
+        )
 
         async def get_interaction_tx(tx):
 
@@ -707,6 +750,9 @@ class Neo4jInteraction(BaseGraphDB):
             interaction_data = await session.execute_read(get_interaction_tx)
 
             if interaction_data is None:
+                self.logger.info(
+                    f"Interaction {interaction_id} not found for user {user_id}"
+                )
                 raise neo4j.exceptions.Neo4jError(
                     "Interaction (`org_id`, `user_id`, `interaction_id`) does not exist."
                 )
@@ -793,6 +839,10 @@ class Neo4jInteraction(BaseGraphDB):
 
         if not all(isinstance(param, int) for param in (skip, limit)):
             raise ValueError("`skip` and `limit` must be integers.")
+
+        self.logger.info(
+            f"Retrieving all interactions for user {user_id} with messages={with_their_messages} and memories={with_their_memories}"
+        )
 
         async def get_interactions_tx(tx):
 
@@ -924,6 +974,10 @@ class Neo4jInteraction(BaseGraphDB):
                 "`org_id`, `user_id` and `interaction_id` must be strings and have a value."
             )
 
+        self.logger.info(
+            f"Deleting interaction {interaction_id} and its memories for user {user_id}"
+        )
+
         interaction_memories = (
             await self.get_interaction(
                 org_id, user_id, interaction_id, with_messages=False, with_memories=True
@@ -985,6 +1039,8 @@ class Neo4jInteraction(BaseGraphDB):
         if not all(param and isinstance(param, str) for param in (org_id, user_id)):
             raise ValueError("`org_id` and `user_id` must be strings and have a value.")
 
+        self.logger.info(f"Deleting all interactions and memories for user {user_id}")
+
         async def delete_all_tx(tx):
             await tx.run(
                 """
@@ -1003,6 +1059,9 @@ class Neo4jInteraction(BaseGraphDB):
             if (
                 self.associated_vector_db
             ):  # If the graph database is associated with a vector database
+                self.logger.info(
+                    f"Deleting all memories from vector database for user {user_id}"
+                )
                 await self.associated_vector_db.delete_all_user_memories(
                     org_id, user_id
                 )
@@ -1011,3 +1070,6 @@ class Neo4jInteraction(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_all_tx)
+            self.logger.info(
+                f"Successfully deleted all interactions and memories for user {user_id}"
+            )

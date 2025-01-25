@@ -19,11 +19,11 @@ class MemoryExtractionResponse(BaseModel):
     )
     memories_second_pass: Optional[list[ExtractedMemory]] = Field(
         default_factory=list,
-        description="Second pass containing info missed in first pass (remember use of #user_#id# or #agent_#id#) with their source message ids, if any.",
+        description="Second pass containing info missed in first pass with their source message ids, if any.",
     )
     memories_third_pass: Optional[list[ExtractedMemory]] = Field(
         default_factory=list,
-        description="Third pass containing info missed in first and second passes (remember use of #user_#id# or #agent_#id#) with their source message ids, if any.",
+        description="Third pass containing info missed in first and second passes with their source message ids, if any.",
     )
 
 

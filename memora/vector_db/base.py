@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional, Tuple
 
-import memora.schema.models as models
+from memora.schema import models
 
 
 class MemorySearchScope(Enum):

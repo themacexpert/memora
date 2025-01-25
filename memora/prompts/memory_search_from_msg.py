@@ -6,7 +6,7 @@ Input:
 - Previous conversation messages (if provided, and is useful for context)
 
 Instructions:
-1. Generate as many search queries needed to retrieve all relevant memories for the message (e.g., all entities, relationships, patterns, information etc.)
+1. Generate as many search queries needed to retrieve all relevant memories for the message (entities, their relationships, patterns, other info etc.)
 2. Focus only on memory needs for the latest message
 3. No explanations or responses - just search queries
 
@@ -17,8 +17,12 @@ Response Format:
 
 Random Example (JUST EXAMPLE DO NOT USE ANY INFO HERE):
 && MEMORY_SEARCH &&
+    << Who is Ava >>
+    << Who is Sarah >>
+    << What is Ava and Sarah Relationship >>
     << Ava vacation in San Francisco with Sarah >>
     << Ava and Sarah's visit to the Golden Gate Bridge >>
+    << What is Sarah relationship with John and Who is he >>
     << Sarah planning a trip with John >>
 """
 

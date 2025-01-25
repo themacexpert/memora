@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-import memora.schema.models as models
+from memora.schema import models
 
 from ..schema.storage_schema import MemoriesAndInteraction
 from ..vector_db.base import BaseVectorDB

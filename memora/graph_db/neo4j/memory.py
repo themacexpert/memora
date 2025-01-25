@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 import neo4j
 from typing_extensions import override
 
-import memora.schema.models as models
+from memora.schema import models
 
 from ..base import BaseGraphDB
 
@@ -202,6 +202,8 @@ class Neo4jMemory(BaseGraphDB):
                 "`org_id`, `user_id` and `memory_id` must be strings and have a value."
             )
 
+        self.logger.info(f"Getting memory {memory_id} for user {user_id}")
+
         async def get_memory_tx(tx):
             result = await tx.run(
                 """
@@ -239,6 +241,9 @@ class Neo4jMemory(BaseGraphDB):
             memory = await session.execute_read(get_memory_tx)
 
             if not memory:
+                self.logger.info(
+                    f"Failed to get memory {memory_id}: Memory does not exist"
+                )
                 raise neo4j.exceptions.Neo4jError(
                     "Memory (`org_id`, `user_id`, `memory_id`) does not exist."
                 )
@@ -295,6 +300,8 @@ class Neo4jMemory(BaseGraphDB):
             raise ValueError(
                 "`org_id`, `user_id` and `memory_id` must be strings and have a value."
             )
+
+        self.logger.info(f"Getting memory history for memory {memory_id}")
 
         async def get_memory_history_tx(tx):
             result = await tx.run(
@@ -392,6 +399,8 @@ class Neo4jMemory(BaseGraphDB):
             if not isinstance(agent_id, str):
                 raise ValueError("`agent_id` must be a string.")
 
+        self.logger.info(f" and agent {agent_id}" if agent_id else "")
+
         async def get_all_memories_tx(tx):
             query = """
                 MATCH (user:User {{org_id: $org_id, user_id: $user_id}})-[:HAS_MEMORIES]->(mc:MemoryCollection)
@@ -479,6 +488,8 @@ class Neo4jMemory(BaseGraphDB):
                 "`org_id`, `user_id` and `memory_id` must be strings and have a value."
             )
 
+        self.logger.info(f"Deleting memory {memory_id}")
+
         async def delete_memory_tx(tx):
             await tx.run(
                 """
@@ -500,6 +511,7 @@ class Neo4jMemory(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_memory_tx)
+            self.logger.info(f"Successfully deleted memory {memory_id}")
 
     @override
     async def delete_all_user_memories(
@@ -520,6 +532,8 @@ class Neo4jMemory(BaseGraphDB):
 
         if not all(param and isinstance(param, str) for param in (org_id, user_id)):
             raise ValueError("`org_id` and `user_id` must be strings and have a value.")
+
+        self.logger.info(f"Deleting all memories for user {user_id}")
 
         async def delete_all_memories_tx(tx):
             await tx.run(
@@ -544,3 +558,4 @@ class Neo4jMemory(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_all_memories_tx)
+            self.logger.info(f"Successfully deleted all memories for user {user_id}")

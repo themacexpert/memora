@@ -5,7 +5,7 @@ import neo4j.exceptions
 import shortuuid
 from typing_extensions import override
 
-import memora.schema.models as models
+from memora.schema import models
 
 from ..base import BaseGraphDB
 
@@ -46,6 +46,7 @@ class Neo4jAgent(BaseGraphDB):
                 raise ValueError("`user_id` must be a string.")
 
         agent_id = shortuuid.uuid()
+        self.logger.info(f"Creating new agent with ID {agent_id}")
 
         async def create_agent_tx(tx):
             if user_id:
@@ -95,8 +96,10 @@ class Neo4jAgent(BaseGraphDB):
             agent_data = await session.execute_write(create_agent_tx)
 
             if agent_data is None:
+                self.logger.info(f"Failed to create agent {agent_id}")
                 raise neo4j.exceptions.Neo4jError("Failed to create agent.")
 
+            self.logger.info(f"Successfully created agent {agent_id}")
             return models.Agent(
                 org_id=agent_data["org_id"],
                 agent_id=agent_data["agent_id"],
@@ -135,6 +138,8 @@ class Neo4jAgent(BaseGraphDB):
                 "`org_id`, `agent_id` and `new_agent_name` must be strings and have a value."
             )
 
+        self.logger.info(f"Updating agent {agent_id}")
+
         async def update_agent_tx(tx):
             result = await tx.run(
                 """
@@ -156,10 +161,14 @@ class Neo4jAgent(BaseGraphDB):
             agent_data = await session.execute_write(update_agent_tx)
 
             if agent_data is None:
+                self.logger.info(
+                    f"Failed to update agent {agent_id}: Agent does not exist"
+                )
                 raise neo4j.exceptions.Neo4jError(
                     "Agent (`org_id`, `agent_id`) does not exist."
                 )
 
+            self.logger.info(f"Successfully updated agent {agent_id}")
             return models.Agent(
                 org_id=agent_data["org_id"],
                 agent_id=agent_data["agent_id"],
@@ -183,6 +192,8 @@ class Neo4jAgent(BaseGraphDB):
                 "`org_id` and `agent_id` must be strings and have a value."
             )
 
+        self.logger.info(f"Deleting agent {agent_id}")
+
         async def delete_agent_tx(tx):
             # Using node key (org_id, agent_id) for faster lookup
             await tx.run(
@@ -198,6 +209,7 @@ class Neo4jAgent(BaseGraphDB):
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
             await session.execute_write(delete_agent_tx)
+            self.logger.info(f"Successfully deleted agent {agent_id}")
 
     @override
     async def get_agent(self, org_id: str, agent_id: str) -> models.Agent:
@@ -236,6 +248,9 @@ class Neo4jAgent(BaseGraphDB):
             agent_data = await session.execute_read(get_agent_tx)
 
             if agent_data is None:
+                self.logger.info(
+                    f"Failed to get agent {agent_id}: Agent does not exist"
+                )
                 raise neo4j.exceptions.Neo4jError(
                     "Agent (`org_id`, `agent_id`) does not exist."
                 )
@@ -268,6 +283,8 @@ class Neo4jAgent(BaseGraphDB):
 
         if not isinstance(org_id, str) or not org_id:
             raise ValueError("`org_id` must be a string and have a value.")
+
+        self.logger.info(f"Getting all agents for organization {org_id}")
 
         async def get_org_agents_tx(tx):
             result = await tx.run(
@@ -319,6 +336,10 @@ class Neo4jAgent(BaseGraphDB):
 
         if not all(param and isinstance(param, str) for param in (org_id, user_id)):
             raise ValueError("`org_id` and `user_id` must be strings and have a value.")
+
+        self.logger.info(
+            f"Getting all agents for user {user_id} in organization {org_id}"
+        )
 
         async def get_user_agents_tx(tx):
             result = await tx.run(

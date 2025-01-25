@@ -349,7 +349,7 @@ class Memora:
         extract_agent_memories: bool = False,
         update_across_agents: bool = True,
         max_retries: int = 3,
-    ) -> Tuple[str, str]:
+    ) -> Tuple[str, datetime]:
         """
         Save a new interaction or update an existing one, and the extracted memories.
 
@@ -371,10 +371,10 @@ class Memora:
             max_retries (int): Maximum number of retries.
 
         Returns:
-            Tuple[str, str] containing:
+            Tuple[str, datetime] containing:
 
                 + interaction_id: Short UUID string
-                + created_at or updated_at: ISO timestamp
+                + created_at or updated_at: Datetime object
 
         Raises:
             Exception: If saving the interaction and its memories fails after max retries.
