@@ -124,8 +124,6 @@ nav:
       - Memory Extraction: api/schema/extraction.md
       - Memory Storage: api/schema/storage.md
 
-  - Change Log: changelog.md
-
 extra:
   social:
     - icon: fontawesome/solid/globe
