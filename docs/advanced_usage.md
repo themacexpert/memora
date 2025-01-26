@@ -121,7 +121,7 @@ if tool_calls: # The memory search tool was called.
     queries = search_args["queries"] # ["restaurant last weekend", "amazing tacos"]
 
     # Step 3: Perform memory search with queries as a single batch
-    recalled_memories, just_memory_ids = await memora.search_memories_as_one(
+    recalled_memories = await memora.search_memories_as_one(
         org_id=org_id,
         user_id=user_id,
         search_queries=queries,
