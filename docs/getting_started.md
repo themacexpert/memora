@@ -10,12 +10,13 @@ Before using Memora, you'll need to set up the following:
      - Option A: [Install Qdrant locally (Free)](https://qdrant.tech/documentation/quick-start/)  
      - Option B: Use [Qdrant Cloud (Free Option available)](https://qdrant.tech/documentation/cloud/)
 
-3. **LLM Provider API Key**  
+3. **LLM Providers**  
    Choose one of the following providers and obtain an API key:  
      - [OpenAI](https://platform.openai.com/)  
      - [Azure OpenAI](https://azure.microsoft.com/en-us/products/cognitive-services/openai-service)  
      - [Together AI](https://www.together.ai/)  
      - [Groq](https://groq.com/)
+     - Or Integrate Your Own LLM Provider. ([See Docs: Custom LLM Backend](https://elzai.github.io/memora/advanced_usage/#custom-llm-backend))
 
 4. **Optional: Rust/Cargo Setup**  
    The `neo4j-rust-ext` package may require Rust/Cargo for building from source if pre-built wheels are unavailable or fail to install on your system.  
