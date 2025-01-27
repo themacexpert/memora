@@ -15,7 +15,18 @@ class BaseBackendLLM(ABC):
     @property
     @abstractmethod
     def get_model_kwargs(self) -> Dict[str, Any]:
-        """Returns dictionary of model configuration parameters"""
+        """
+        Returns dictionary of model configuration parameters
+
+        Example:
+            return {
+                "model": self.model, # model_name: gpt-4o
+                "temperature": self.temperature, # 1
+                "top_p": self.top_p, # 1
+                "max_tokens": self.max_tokens, # 1024
+                "stream": False,
+            }
+        """
         pass
 
     @abstractmethod
