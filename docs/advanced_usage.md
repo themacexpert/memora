@@ -171,24 +171,95 @@ To create a custom LLM backend for your llm provider that Memora can use, extend
 ```python
 from memora.llm_backends.base import BaseBackendLLM
 from typing_extensions import override
-from typing import *
+from pydantic import BaseModel
+from typing import Any, Dict, List, Type, Union
 
 class CustomBackendLLM(BaseBackendLLM):
+
+    def __init__(
+        self,
+        model: str, 
+        temperature: float = 1,
+        top_p: float = 1,
+        max_tokens: int = 1024,
+        # Any more arguments you want to add.
+        *args,
+        **kwargs
+    ):
+        """
+        Initialize the CustomBackendLLM class with specific parameters.
+
+        Example (May Differ for your case):
+            self.custom_client = AsyncCustomClient(...)
+
+            self.model = model
+            self.temperature = temperature
+            self.top_p = top_p
+            self.max_tokens = max_tokens
+        """
+        pass
+
     @override
-    async def close(self) -> None:
-        # Implement your LLM logic here
+    async def close(self) -> None: 
+        """
+        Closes the LLM connection.
+        
+        Example (May Differ for your case):
+            await self.custom_client.close()
+            self.custom_client = None
+
+            OR JUST
+            self.custom_client = None
+        """
         pass
 
     @property
     @override
     def get_model_kwargs(self) -> Dict[str, Any]:
-        # Implement your LLM logic here
+        """
+        Returns dictionary of model configuration parameters
+        
+        Example (May have more parameters for your case):
+            return {
+                "model": self.model, # model_name: gpt-4o
+                "temperature": self.temperature, # 1
+                "top_p": self.top_p, # 1
+                "max_tokens": self.max_tokens, # 1024
+                "stream": False,
+            }
+        """
         pass
 
     @abstractmethod
     @override
     async def __call__(self, messages: List[Dict[str, str]], output_schema_model: Type[BaseModel] | None = None) -> Union[str, BaseModel]:
-        # Implement your LLM logic here
+        """
+        Process messages and generate response (📌 Streaming is not supported, as full response is required at once)
+
+        Args:
+            messages (List[Dict[str, str]]): List of message dicts with role and content e.g [{"role": "user", "content": "Hello!"}, ...]
+            output_schema_model (Type[BaseModel] | None): Optional Pydantic base model for structured output (📌 Ensure your model provider supports this for the chosen model)
+
+        Returns:
+            Union[str, BaseModel]: Generated text response as a string, or an instance of the output schema model if specified
+
+        Example (May Differ for your case):
+            if output_schema_model:
+                response = await self.custom_client.chat.completions.create(
+                    messages=messages,
+                    **self.get_model_kwargs,
+                    response_format={"type": "json_object"},
+                )
+                content = response.choices[0].message.content
+                return output_schema_model.model_validate_json(content)
+
+            else:
+                response = await self.custom_client.chat.completions.create(
+                    messages=messages,
+                    **self.get_model_kwargs,
+                )
+                return response.choices[0].message.content
+        """
         pass
 ```
 !!! note
