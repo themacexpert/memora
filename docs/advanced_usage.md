@@ -182,9 +182,7 @@ class CustomBackendLLM(BaseBackendLLM):
         temperature: float = 1,
         top_p: float = 1,
         max_tokens: int = 1024,
-        # Any more arguments you want to add.
-        *args,
-        **kwargs
+        # Or Any arguments you want.
     ):
         """
         Initialize the CustomBackendLLM class with specific parameters.
