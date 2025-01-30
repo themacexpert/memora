@@ -12,3 +12,6 @@ site/
 dist/
 
 .ruff_cache
+
+# ignore memgraph docker file
+memgraph-platform
