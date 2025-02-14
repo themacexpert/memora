@@ -15,3 +15,4 @@ dist/
 
 # ignore memgraph docker file
 memgraph-platform
+connect_memgraph.txt
