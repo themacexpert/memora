@@ -657,10 +657,18 @@ class BaseGraphDB(ABC):
 
     @abstractmethod
     async def get_all_user_memories(
-        self, org_id: str, user_id: str, agent_id: Optional[str] = None
+        self,
+        org_id: str,
+        user_id: str,
+        agent_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 1000,
     ) -> List[models.Memory]:
         """
         Retrieves all memories associated with a specific user.
+
+        Note:
+            Memories are sorted in descending order by their obtained at datetime. (So most recent memories are first).
 
         Args:
             org_id (str): Short UUID string identifying the organization
@@ -668,6 +676,8 @@ class BaseGraphDB(ABC):
             agent_id (Optional[str]): Optional short UUID string identifying the agent. If provided, only memories obtained from
                 interactions with this agent are returned.
                 Otherwise, all memories associated with the user are returned.
+            skip (int): Number of interactions to skip. (Useful for pagination)
+            limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
 
         Returns:
             List[Memory] containing memory details:
