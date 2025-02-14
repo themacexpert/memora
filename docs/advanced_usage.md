@@ -2,7 +2,7 @@
 
 ## **The Graph Model**
 
-![Graph Model](pictures/memora_graph_model_0_0_1.png)
+![Graph Model](pictures/memora_graph_model_0_2_1.png)
 
 !!! note "Multi-Tenant Design"
     - Memora accommodates multiple organizations, agents, and users in one system 🏢👥🤖
@@ -32,7 +32,8 @@
 - Users have interactions, which are conversations with agents.
 - Each interaction is timestamped and linked to a specific date of occurance.
 - Memories are extracted from these interactions and stored in a user's memory collection.
-- Memories are also linked to both their source messages and source interactions.
+- Memories are linked to both their source messages and source interactions.
+- Memories are also linked to the date node representing the date they were obtained at.
 - All contrary updates to a memory are connected, so there is a historical view of memories, enabling tracking of how information evolves over time.
 
 ### **Message Structure**

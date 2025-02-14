@@ -149,7 +149,7 @@ class Neo4jGraphInterface(
         their `org_id, user_id, obtained_at` attributes.
         """
 
-        async def drop_updated_at_index(tx):
+        async def migrate(tx):
             self.logger.info(
                 "Dropping interaction_updated_timestamp_index index if it exists"
             )
@@ -176,5 +176,5 @@ class Neo4jGraphInterface(
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            await session.execute_write(drop_updated_at_index)
+            await session.execute_write(migrate)
         self.logger.info("Migration to v0_2 graph schema completed")
