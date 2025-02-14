@@ -124,14 +124,6 @@ class Neo4jGraphInterface(
             """
             )
 
-            # Index on interaction updated_at, useful for sorting interactions by most recent when retrieving.
-            await tx.run(
-                """
-                CREATE INDEX interaction_updated_timestamp_index IF NOT EXISTS
-                FOR (i:Interaction) ON (i.updated_at);
-            """
-            )
-
             # Date node key
             await tx.run(
                 """
@@ -146,3 +138,43 @@ class Neo4jGraphInterface(
         ) as session:
             await session.execute_write(create_constraints_and_indexes)
         self.logger.info("Setup complete")
+
+    # Migration method
+    async def migrate_to_v0_2(self, *args, **kwargs) -> None:
+        """
+        Migrate the Neo4j graph database schema to the latest version 0_2.
+
+        This migration involves dropping the index `interaction_updated_timestamp` (because Neo4j does not utilize it for index-backed sorting)
+        and establishing :DATE_OBTAINED relationships between `Memory` nodes and `Date` nodes based on
+        their `org_id, user_id, obtained_at` attributes.
+        """
+
+        async def drop_updated_at_index(tx):
+            self.logger.info(
+                "Dropping interaction_updated_timestamp_index index if it exists"
+            )
+            await tx.run(
+                """
+                DROP INDEX interaction_updated_timestamp_index IF EXISTS
+                """
+            )
+            self.logger.info("Index dropped (if it existed)")
+
+            self.logger.info(
+                "Linking Memory nodes to Date nodes based on org_id, user_id, obtained_at"
+            )
+            await tx.run(
+                """
+                MATCH (memory:Memory)
+                MERGE (date:Date {org_id: memory.org_id, user_id: memory.user_id, date: date(memory.obtained_at)})
+                MERGE (memory)-[:DATE_OBTAINED]->(date)
+                """
+            )
+            self.logger.info("Memory nodes successfully linked to their Date nodes")
+
+        self.logger.info("Starting migration to v0_2 graph schema")
+        async with self.driver.session(
+            database=self.database, default_access_mode=neo4j.WRITE_ACCESS
+        ) as session:
+            await session.execute_write(drop_updated_at_index)
+        self.logger.info("Migration to v0_2 graph schema completed")
