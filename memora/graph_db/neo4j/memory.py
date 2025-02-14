@@ -364,10 +364,18 @@ class Neo4jMemory(BaseGraphDB):
 
     @override
     async def get_all_user_memories(
-        self, org_id: str, user_id: str, agent_id: Optional[str] = None
+        self,
+        org_id: str,
+        user_id: str,
+        agent_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 1000,
     ) -> List[models.Memory]:
         """
         Retrieves all memories associated with a specific user.
+
+        Note:
+            Memories are sorted in descending order by their obtained at datetime. (So most recent memories are first).
 
         Args:
             org_id (str): Short UUID string identifying the organization
@@ -375,6 +383,8 @@ class Neo4jMemory(BaseGraphDB):
             agent_id (Optional[str]): Optional short UUID string identifying the agent. If provided, only memories obtained from
                 interactions with this agent are returned.
                 Otherwise, all memories associated with the user are returned.
+            skip (int): Number of interactions to skip. (Useful for pagination)
+            limit (int): Maximum number of interactions to retrieve. (Useful for pagination)
 
         Returns:
             List[Memory] containing memory details:
@@ -403,15 +413,23 @@ class Neo4jMemory(BaseGraphDB):
 
         async def get_all_memories_tx(tx):
             query = """
-                MATCH (user:User {{org_id: $org_id, user_id: $user_id}})-[:HAS_MEMORIES]->(mc:MemoryCollection)
-                MATCH (mc)-[:INCLUDES]->(m:Memory)
-                {agent_filter}
-                WITH m, user
+                // Cleverly transverse through dates to get memories sorted, avoiding having to sort all user memory nodes.
+                MATCH (d:Date {{org_id: $org_id, user_id: $user_id}})
+                WITH d ORDER BY d.date DESC
+                CALL (d) {{
+                    MATCH (d)<-[:DATE_OBTAINED]-(memory)
+                    {agent_filter}
+                    RETURN memory ORDER BY memory.obtained_at DESC
+                }}
+
+                WITH memory AS m SKIP $skip LIMIT $limit
 
                 OPTIONAL MATCH (m)-[:MESSAGE_SOURCE]->(msgSource)
-                WITH m, user, collect(msgSource{{.*}}) as msgSources
+                WITH m, collect(msgSource{{.*}}) as msgSources
 
+                MATCH (user:User {{org_id: m.org_id, user_id: m.user_id}})
                 MATCH (agent:Agent {{org_id: m.org_id, agent_id: m.agent_id}})
+
                 RETURN m{{
                     .org_id,
                     .agent_id,
@@ -426,12 +444,14 @@ class Neo4jMemory(BaseGraphDB):
                     message_sources: msgSources
                 }} as memory
             """
-            agent_filter = "WHERE m.agent_id = $agent_id" if agent_id else ""
+            agent_filter = "WHERE memory.agent_id = $agent_id" if agent_id else ""
             result = await tx.run(
                 query.format(agent_filter=agent_filter),
                 org_id=org_id,
                 user_id=user_id,
                 agent_id=agent_id,
+                skip=skip,
+                limit=limit,
             )
 
             records = await result.value("memory", [])

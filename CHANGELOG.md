@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),  
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## **[Unreleased]**
+
+### **Added**
+- **Graph Database**:
+  - `get_all_user_memories` is now sorted by most recent first and supports pagination with `skip (default: 0)` and/or `limit (default: 1000)`  parameters.
+
+  ```python
+  ...
+  await memora.graph.get_all_user_memories(ORG_ID, USER_ID, skip=0, limit=30) # get the 30 most recent memories.
+  ```
+
+
+### **Changed**
+- **⚠️ Breaking Changes**:
+
+  - **Graph Database:**
+
+    - **Migration Required**: Users must call `graph.migrate_to_v0_2()` to migrate their graph schema to the latest version 0_2. Migration will do the following:
+      - Drop `:Interaction (updated_at) -> interaction_updated_timestamp_index` index because Neo4j does not utilize it for index-backed sorting when retrieving interactions.
+      - Link every `Memory` nodes to their respective `Date` nodes via `:DATE_OBTAINED` relationship.
+
+      ```python
+      await graph.migrate_to_v0_2() # Migrate the graph schema to the latest version 0_2.
+      ```
+
+### **Improvements**
+- **Optimized Graph Retrieval**:
+  - Introduced an efficient method to traverse from `Date` nodes to `Interaction` nodes during `get_all_user_interactions`, enabling sorted retrieval without sorting all user interactions in the graph unless needed.
+
+  - Similarly, `get_all_user_memories` now uses the new `DATE_OBTAINED` link created during migration to traverse from `Date` nodes to `Memory` nodes, enabling sorted retrieval without sorting all user memories in the graph unless needed.
+
+
+
+
 ## **[0.2.0] - 2025-01-25**
 
 ### **Added**

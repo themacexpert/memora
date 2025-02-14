@@ -847,13 +847,17 @@ class Neo4jInteraction(BaseGraphDB):
         async def get_interactions_tx(tx):
 
             query = """
-                MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:INTERACTIONS_IN]->(ic)-[:HAD_INTERACTION]->(interaction:Interaction)
-                ORDER BY interaction.updated_at DESC
-                SKIP $skip
-                LIMIT $limit
+                // Cleverly transverse through dates to get interactions sorted, avoiding having to sort all user interaction nodes.
+                MATCH (d:Date {org_id: $org_id, user_id: $user_id})
+                WITH d ORDER BY d.date DESC
+                CALL (d) {
+                    MATCH (d)<-[:HAS_OCCURRENCE_ON]-(interaction)
+                    RETURN interaction ORDER BY interaction.updated_at DESC
+                }
+                WITH DISTINCT interaction SKIP $skip LIMIT $limit
 
                 // Initialize messages/memories upfront
-                WITH interaction, [] AS messages, [] AS memories
+                WITH interaction, [] AS messages, [] AS memories 
             """
 
             if with_their_messages:
