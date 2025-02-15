@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## **[Unreleased]**
+### **In Progress**
+- **Dynamic Graph Memory** (Experimental Feature):
+  - Developing a dynamic graph memory feature where each user has their own graph schema.
+  - During interactions, the agent will be provided with the graph schema to generate numerous Cypher queries for memory recall, which will be executed, and results returned in a structured format.
+  - At the end of interactions, the agent will perform exploratory read queries to understand existing knowledge and then make write/update queries to the graph database with new information from the interaction.
+  - This feature is being built on Memgraph, which will become Memora's main graph database. It was chosen for its in-memory storage and speed, aligning with our low latency goals.
+
+
+## **[0.3.0] - 2025-02-15**
 
 ### **Added**
 - **Graph Database**:
@@ -22,12 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
   - **Graph Database:**
 
-    - **Migration Required**: Users must call `graph.migrate_to_v0_2()` to migrate their graph schema to the latest version 0_2. Migration will do the following:
+    - **Migration Required**: Users must call `graph.migrate_to_schema_for_memora_v0_3_x()` to migrate their graph schema to the version that works with Memora v0.3.x. Migration will do the following:
       - Drop `:Interaction (updated_at) -> interaction_updated_timestamp_index` index because Neo4j does not utilize it for index-backed sorting when retrieving interactions.
       - Link every `Memory` nodes to their respective `Date` nodes via `:DATE_OBTAINED` relationship.
 
       ```python
-      await graph.migrate_to_v0_2() # Migrate the graph schema to the latest version 0_2.
+      await graph.migrate_to_schema_for_memora_v0_3_x() # Migrate the graph schema to the version that works with Memora v0.3.x
       ```
 
 ### **Improvements**
