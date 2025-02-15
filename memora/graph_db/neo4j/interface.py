@@ -140,26 +140,16 @@ class Neo4jGraphInterface(
         self.logger.info("Setup complete")
 
     # Migration method
-    async def migrate_to_v0_2(self, *args, **kwargs) -> None:
+    async def migrate_to_schema_for_memora_v0_3_x(self, *args, **kwargs) -> None:
         """
-        Migrate the Neo4j graph database schema to the latest version 0_2.
+        Migrate the Neo4j graph database schema to the version that works with Memora v0.3.x
 
-        This migration involves dropping the index `interaction_updated_timestamp` (because Neo4j does not utilize it for index-backed sorting)
-        and establishing :DATE_OBTAINED relationships between `Memory` nodes and `Date` nodes based on
-        their `org_id, user_id, obtained_at` attributes.
+        This migration involves establishing :DATE_OBTAINED relationships between `Memory` nodes and `Date` nodes based on
+        their `org_id, user_id, obtained_at` attributes and dropping the index `:Interaction (updated_at) -> interaction_updated_timestamp` (because
+        Neo4j does not utilize it for index-backed sorting)
         """
 
-        async def migrate(tx):
-            self.logger.info(
-                "Dropping interaction_updated_timestamp_index index if it exists"
-            )
-            await tx.run(
-                """
-                DROP INDEX interaction_updated_timestamp_index IF EXISTS
-                """
-            )
-            self.logger.info("Index dropped (if it existed)")
-
+        async def link_memories_to_dates(tx):
             self.logger.info(
                 "Linking Memory nodes to Date nodes based on org_id, user_id, obtained_at"
             )
@@ -172,9 +162,23 @@ class Neo4jGraphInterface(
             )
             self.logger.info("Memory nodes successfully linked to their Date nodes")
 
-        self.logger.info("Starting migration to v0_2 graph schema")
+        async def drop_index(tx):
+            self.logger.info(
+                "Dropping interaction_updated_timestamp_index index if it exists"
+            )
+            await tx.run(
+                """
+                DROP INDEX interaction_updated_timestamp_index IF EXISTS
+                """
+            )
+            self.logger.info("Index dropped (if it existed)")
+
+        self.logger.info(
+            "Starting migration to graph schema that works with Memora v0.3.x"
+        )
         async with self.driver.session(
             database=self.database, default_access_mode=neo4j.WRITE_ACCESS
         ) as session:
-            await session.execute_write(migrate)
-        self.logger.info("Migration to v0_2 graph schema completed")
+            await session.execute_write(link_memories_to_dates)
+            await session.execute_write(drop_index)
+        self.logger.info("Migration of graph schema completed")
