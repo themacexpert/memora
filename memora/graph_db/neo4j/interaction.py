@@ -156,8 +156,9 @@ class Neo4jInteraction(BaseGraphDB):
                 // Retrieve all messages in the interaction, and the users memory collection.
                 MATCH (interaction: Interaction {org_id: $org_id, user_id: $user_id, interaction_id: $interaction_id})-[r:FIRST_MESSAGE|IS_NEXT*]->(m:MessageBlock)
                 MATCH (user:User {org_id: $org_id, user_id: $user_id})-[:HAS_MEMORIES]->(mc)
+                MATCH (date:Date {org_id: $org_id, user_id: $user_id, date: date(datetime($interaction_date))})
 
-                WITH collect(m) as messages, interaction, mc
+                WITH collect(m) as messages, interaction, mc, date
 
                 // Create the memory nodes.
                 UNWIND $memories_and_source as memory_tuple
@@ -176,6 +177,9 @@ class Neo4jInteraction(BaseGraphDB):
 
                 // Link to user's memory collection
                 CREATE (mc)-[:INCLUDES]->(memory)
+
+                // Link to date
+                CREATE (memory)-[:DATE_OBTAINED]->(date)
 
                 // For each memory, Link to it's source message in the interaction.
                 WITH memory, memory_tuple[2] as all_memory_source_msg_pos, messages
