@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - This feature is being built on Memgraph, which will become Memora's main graph database. It was chosen for its in-memory storage and speed, aligning with our low latency goals.
 
 
+## **[0.3.1] - 2025-02-19**
+
+### **Fixed**
+- **Graph Database**:
+  - Fixed the issue where fetching all user memories did not return new memory entries due to missing `DATE_OBTAINED` relationships by updating the `save_or_update_interaction_and_memories(..)` function to establish these connections between new `Memory` and `Date` nodes. ([Issue #26](https://github.com/elzai/memora/issues/26))
+
+
+
 ## **[0.3.0] - 2025-02-15**
 
 ### **Added**

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "memora-core"
-version = "0.3.0"
+version = "0.3.1"
 description = "Memora is an agent that aims to replicate the human memory for AI assistants / agents."
 authors = ["ELZAI <founders@elzai.com>"]
 license = "Apache-2.0"
